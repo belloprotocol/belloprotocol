@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Bello Protocol — Master Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;padding:14px;font-size:12px;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;padding-bottom:env(safe-area-inset-bottom,14px)}
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
+.master-hdr{text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eee}
+.master-hdr h1{font-size:17px;font-weight:600;letter-spacing:-0.02em}
+.master-hdr p{font-size:10px;color:#888;margin-top:2px}
+.drug-tabs{display:flex;gap:3px;margin-bottom:14px;flex-wrap:wrap;justify-content:center}
+.drug-tab{padding:7px 12px;border-radius:7px;border:2px solid #ddd;font-size:11px;font-weight:600;cursor:pointer;background:#fff;color:#666;transition:all 0.2s;line-height:1.2}
+.drug-tab:hover{background:#f7f7f5}
+.drug-tab.active{color:#fff}
+.drug-tab .sub{display:block;font-size:8px;font-weight:400;opacity:0.8;margin-top:1px}
+.controls{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.ctrl-label{font-size:10px;color:#666}
+.toggle-group{display:flex;gap:3px}
+.toggle-btn,.sort-btn{padding:4px 9px;border-radius:5px;border:1px solid #ddd;font-size:10px;cursor:pointer;background:#fff;color:#666}
+.toggle-btn.on,.sort-btn.active{background:#f0f0ee;color:#1a1a1a;border-color:#aaa;font-weight:500}
+.now-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.now-badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500}
+.chart-area{position:relative;overflow-x:auto}.timeline-wrap{min-width:600px}
+.time-axis{display:flex;margin-left:185px;margin-bottom:4px;position:relative;height:32px}
+.time-tick{position:absolute;font-size:8px;color:#aaa;transform:translateX(-50%);text-align:center;line-height:1.2}
+.bene-row{display:flex;align-items:flex-end;margin-bottom:4px;cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s}
+.bene-row:hover{background:#f7f7f5}.bene-row.selected{background:#EEF6FF}
+.bene-label{width:185px;flex-shrink:0;font-size:10px;color:#444;text-align:right;padding-right:8px;line-height:1.25;padding-bottom:1px}
+.bene-label .cat{font-size:8px;color:#aaa;display:block;margin-top:1px}
+.bar-track{flex:1;height:16px;background:#f5f5f5;border-radius:4px;position:relative;overflow:visible;margin-top:38px;margin-bottom:26px}
+.seg{position:absolute;height:100%;border-radius:3px}
+.pin-stack{position:absolute;top:-20px;font-size:7px;font-weight:700;white-space:nowrap;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:5}
+.pin-stack::after{content:'';position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);border-left:2px solid transparent;border-right:2px solid transparent;border-top-width:3px;border-top-style:solid}
+.pin-solo{position:absolute;top:-36px;font-size:7px;font-weight:600;white-space:nowrap;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:4;background:#f0f0ee;color:#888;border:1px solid #ddd}
+.pin-active{position:absolute;bottom:-18px;font-size:7px;font-weight:600;white-space:nowrap;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:4}
+.onset-dot{position:absolute;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;border:1.5px solid #fff;z-index:3}
+.now-overlay{position:absolute;top:-24px;bottom:-20px;width:2px;pointer-events:none;z-index:7}
+.now-overlay::before{content:'';position:absolute;top:0;left:-3px;width:8px;height:100%;background:inherit;opacity:0.15;border-radius:2px}
+.now-date-label{position:absolute;bottom:-18px;font-size:6px;font-weight:700;white-space:nowrap;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:8;letter-spacing:0.02em}
+.progress-fill{position:absolute;top:0;height:100%;border-radius:4px 0 0 4px;pointer-events:none;z-index:2}
+.pct-badge{position:absolute;top:-12px;font-size:8px;font-weight:800;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:6;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.detail-panel{background:#f7f7f5;border-radius:8px;padding:10px 12px;margin-top:8px;border-left:3px solid #999;min-height:70px}
+.dp-title{font-size:12px;font-weight:500;margin-bottom:3px}
+.dp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
+.dp-cell{background:#fff;border-radius:5px;padding:5px 7px;border:1px solid #eee}
+.dp-cell-label{font-size:7px;color:#999;text-transform:uppercase;letter-spacing:0.04em}
+.dp-cell-val{font-size:12px;font-weight:600}
+.dp-cell-sub{font-size:7px;color:#aaa;margin-top:1px}
+.dp-text{font-size:10px;color:#555;line-height:1.5;margin-bottom:5px}
+.dp-stack-row{display:flex;flex-wrap:wrap;gap:3px}
+.dp-pill{font-size:8px;font-weight:500;padding:1px 5px;border-radius:5px}
+.ov-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:10px}
+.ov-table th{background:#f7f7f5;padding:5px 7px;text-align:left;font-weight:600;border-bottom:2px solid #ddd}
+.ov-table td{padding:4px 7px;border-bottom:1px solid #eee;vertical-align:top}
+.ov-table tr:hover{background:#f9f9f7}
+.ov-badge{display:inline-block;font-size:8px;font-weight:600;padding:1px 6px;border-radius:4px;color:#fff}
+.ov-section{margin-top:14px}
+.ov-compound-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ov-section h3{font-size:12px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #eee}
+.note{font-size:9px;color:#bbb;margin-top:12px;line-height:1.5}
+.now-banner{background:linear-gradient(90deg,#0ea5e910,#0ea5e930,#0ea5e910);border:1px solid #0ea5e940;border-radius:8px;padding:6px 12px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+.now-banner .dot{width:8px;height:8px;border-radius:50%;background:#0ea5e9;animation:pulse 2s infinite}
+.now-banner .date{font-size:11px;font-weight:700;color:#0ea5e9;letter-spacing:0.02em}
+.now-banner .time{font-size:9px;color:#0891b2}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(14,165,233,0.4)}50%{opacity:0.7;box-shadow:0 0 0 4px rgba(14,165,233,0)}}
+#drugContent{display:none}
+/* Transformation */
+.tx-hero{text-align:center;padding:20px 10px 16px;border-bottom:1px solid #eee;margin-bottom:16px}
+.tx-hero h2{font-size:18px;font-weight:700;background:linear-gradient(135deg,#0ea5e9,#8b5cf6,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.tx-hero p{font-size:10px;color:#888;max-width:480px;margin:0 auto}
+.tx-badges{display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.tx-badge{padding:3px 8px;border-radius:10px;font-size:9px;font-weight:500;border:1px solid #eee;background:#f9fafb}
+.tx-badge.g{border-color:#d1fae5;color:#059669;background:#ecfdf5}
+.tx-badge.p{border-color:#ede9fe;color:#7c3aed;background:#f5f3ff}
+.tx-badge.c{border-color:#cffafe;color:#0891b2;background:#ecfeff}
+.sil-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.sil{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;width:140px}
+.sil.now{border-color:#0ea5e9;background:#f0f9ff}.sil.target{border-color:#34d399;background:#f0fdf4}
+.sil-lbl{font-size:7px;text-transform:uppercase;letter-spacing:0.08em;color:#9ca3af}
+.sil-ico{font-size:30px;margin:4px 0}.sil-wt{font-size:14px;font-weight:700}.sil-bf{font-size:9px;color:#6b7280}
+.sil-detail{font-size:8px;color:#9ca3af;line-height:1.4;margin-top:4px}
+.sil-tag{display:inline-block;padding:1px 5px;border-radius:5px;font-size:7px;font-weight:600;margin-top:3px}
+.sil-tag.r{background:#fef2f2;color:#dc2626}.sil-tag.a{background:#fffbeb;color:#d97706}.sil-tag.g{background:#f0fdf4;color:#16a34a}
+.tx-tl{position:relative;padding-left:24px;margin:14px 0}
+.tx-tl::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#0ea5e9,#8b5cf6,#34d399)}
+.tx-tl-item{position:relative;margin-bottom:16px}
+.tx-tl-dot{position:absolute;left:-20px;top:3px;width:8px;height:8px;border-radius:50%}
+.tx-tl-date{font-size:8px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em}
+.tx-tl-title{font-size:12px;font-weight:700;margin:1px 0 3px}.tx-tl-desc{font-size:9px;color:#6b7280;line-height:1.5}
+.tx-tl-tags{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.tx-tl-tag{font-size:7px;padding:1px 5px;border-radius:5px;font-weight:500}
+.organ-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:7px;margin:10px 0}
+.org{background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px;border-top:2px solid #ccc}
+.org-ico{font-size:16px}.org-nm{font-size:10px;font-weight:700;margin-top:1px}.org-age{font-size:8px;color:#9ca3af}
+.org-bar-bg{height:4px;background:#f3f4f6;border-radius:2px;margin:4px 0 3px;overflow:hidden}
+.org-bar{height:100%;border-radius:2px}.org-desc{font-size:8px;color:#9ca3af;line-height:1.4}
+.feel-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin:10px 0}
+.feel{background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px}
+.feel-ico{font-size:20px}.feel-nm{font-size:10px;font-weight:700;margin:1px 0}.feel-desc{font-size:8px;color:#6b7280;line-height:1.4}
+.div-row{display:flex;gap:7px;margin:8px 0}
+.div-card{flex:1;border-radius:7px;padding:8px;font-size:9px;line-height:1.5;border:1px solid #e5e7eb;background:#f9fafb}
+.div-card.you{border-color:#d1fae5;background:#f0fdf4}.div-card.peer{border-color:#fee2e2;background:#fef2f2;opacity:0.7}
+.div-lbl{font-size:7px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:3px}
+.div-lbl.you{color:#059669}.div-lbl.peer{color:#dc2626}
+.hon-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:5px;margin:8px 0}
+.hon{background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:6px;font-size:8px;color:#6b7280;line-height:1.3}
+.hon strong{color:#dc2626;display:block;font-size:9px;margin-bottom:1px}
+.tx-section{margin:18px 0}
+.tx-sh{font-size:13px;font-weight:700;margin-bottom:3px}.tx-ss{font-size:9px;color:#9ca3af;margin-bottom:8px}
+/* Chart scroll hint for mobile */
+.chart-area{-webkit-overflow-scrolling:touch}
+.chart-area::after{content:'← swipe to scroll →';display:none;text-align:center;font-size:8px;color:#bbb;padding:4px 0;letter-spacing:0.05em}
+/* ===== RESPONSIVE — TABLETS (≤768px) ===== */
+@media(max-width:768px){
+  body{padding:10px;font-size:12px}
+  .master-hdr h1{font-size:15px}
+  .drug-tab{padding:8px 10px;font-size:10px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .drug-tab .sub{font-size:7px}
+  .dp-grid{grid-template-columns:1fr 1fr 1fr;gap:4px}
+  .ov-table{font-size:9px}
+  .ov-table th,.ov-table td{padding:4px 5px}
+  .sil{width:120px;padding:8px}
+  .organ-g{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .feel-g{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+}
+/* ===== RESPONSIVE — PHONES (≤480px) ===== */
+@media(max-width:480px){
+  body{padding:8px 6px;padding-bottom:calc(env(safe-area-inset-bottom,8px) + 8px)}
+  .master-hdr{margin-bottom:10px;padding-bottom:8px}
+  .master-hdr h1{font-size:14px}
+  .master-hdr p{font-size:9px}
+  /* Live date banner */
+  .now-banner{flex-direction:column;gap:2px;padding:6px 8px}
+  .now-banner .date{font-size:10px}
+  .now-banner .time{font-size:8px}
+  /* Tabs — 3x2 grid on phone */
+  .drug-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;justify-content:stretch}
+  .drug-tab{padding:8px 4px;font-size:9px;min-height:48px;text-align:center;border-radius:6px;touch-action:manipulation}
+  .drug-tab .sub{font-size:6.5px;margin-top:2px}
+  /* Controls — stack vertically */
+  .controls{flex-direction:column;align-items:stretch;gap:6px}
+  .toggle-group{justify-content:center}
+  .toggle-btn,.sort-btn{min-height:36px;padding:6px 10px;font-size:10px;touch-action:manipulation}
+  /* NOW row */
+  .now-row{flex-direction:column;gap:4px}
+  .now-badge{font-size:9px;justify-content:center;text-align:center}
+  /* Timeline — narrower labels for phone */
+  .bene-label{width:110px;font-size:9px;padding-right:5px}
+  .bene-label .cat{font-size:7px}
+  .time-axis{margin-left:110px}
+  .timeline-wrap{min-width:500px}
+  .chart-area::after{display:block}
+  .bar-track{height:20px;margin-top:34px;margin-bottom:28px}
+  /* Pin labels */
+  .pin-stack{font-size:6px;padding:1px 3px}
+  .pin-solo{font-size:6px;top:-30px}
+  .pin-active{font-size:6px}
+  .pct-badge{font-size:7px;padding:1px 3px}
+  .now-date-label{font-size:5.5px;padding:1px 3px}
+  /* Detail panel */
+  .detail-panel{padding:8px 10px;margin-top:6px}
+  .dp-title{font-size:11px}
+  .dp-grid{grid-template-columns:1fr 1fr 1fr;gap:3px}
+  .dp-cell{padding:4px 5px}
+  .dp-cell-label{font-size:6.5px}
+  .dp-cell-val{font-size:11px}
+  .dp-text{font-size:9px}
+  .dp-pill{font-size:7px;padding:2px 5px}
+  /* Overview grids */
+  .ov-compound-grid{grid-template-columns:1fr}
+  .ov-table{font-size:9px}
+  .ov-table th,.ov-table td{padding:3px 4px}
+  /* Transformation — body comp silhouettes */
+  .sil-row{gap:5px}
+  .sil{width:calc(50% - 5px);min-width:0;padding:8px 6px}
+  .sil-ico{font-size:24px}
+  .sil-wt{font-size:13px}
+  .sil-bf{font-size:8px}
+  .sil-detail{font-size:7px}
+  /* Organ and feel grids */
+  .organ-g{grid-template-columns:1fr 1fr;gap:5px}
+  .feel-g{grid-template-columns:1fr 1fr;gap:5px}
+  .feel{padding:6px}
+  .feel-ico{font-size:16px}
+  .feel-nm{font-size:9px}
+  .feel-desc{font-size:7.5px}
+  .org{padding:6px}
+  .org-ico{font-size:14px}
+  .org-nm{font-size:9px}
+  .org-desc{font-size:7px}
+  /* You vs Peers */
+  .div-row{flex-direction:column;gap:5px}
+  .div-card{font-size:8px}
+  .hon-g{grid-template-columns:1fr 1fr}
+  /* Bio age and organ charts — constrain SVGs */
+  #bioAgeChart,#organBarChart{padding:8px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Transformation hero */
+  .tx-hero{padding:14px 8px 12px}
+  .tx-hero h2{font-size:15px}
+  .tx-hero p{font-size:9px}
+  .tx-badges{gap:3px}
+  .tx-badge{font-size:8px;padding:2px 6px}
+  .tx-sh{font-size:12px}
+  .tx-ss{font-size:8px}
+  /* Timeline items */
+  .tx-tl{padding-left:20px}
+  .tx-tl-title{font-size:11px}
+  .tx-tl-desc{font-size:8px}
+  .tx-tl-date{font-size:7px}
+  /* Footer */
+  .note{font-size:8px}
+}
+/* ===== RESPONSIVE — VERY SMALL PHONES (≤360px) ===== */
+@media(max-width:360px){
+  body{padding:6px 4px}
+  .drug-tabs{grid-template-columns:repeat(3,1fr);gap:3px}
+  .drug-tab{padding:6px 3px;font-size:8px;min-height:44px}
+  .drug-tab .sub{font-size:6px}
+  .bene-label{width:90px;font-size:8px}
+  .time-axis{margin-left:90px}
+  .timeline-wrap{min-width:440px}
+  .sil{width:calc(50% - 4px)}
+  .organ-g{grid-template-columns:1fr 1fr}
+  .feel-g{grid-template-columns:1fr}
+}
+/* ===== LANDSCAPE PHONE ===== */
+@media(max-height:500px) and (orientation:landscape){
+  body{padding:6px 10px}
+  .master-hdr{margin-bottom:8px;padding-bottom:6px}
+  .drug-tabs{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch}
+  .drug-tab{flex:0 0 auto}
+}
+/* ===== PRINT ===== */
+@media print{
+  .now-banner,.drug-tabs,.controls,.toggle-group{display:none!important}
+  body{font-size:10px;padding:0}
+}
+</style>
+</head>
+<body>
+<div class="master-hdr">
+  <h1>Bello Protocol — Master Dashboard</h1>
+  <p id="masterSub">7 Rx + 2 Peptides + 17 Supplements — All mechanisms, labs, research updates (2025-2026), and transformation trajectory</p>
+</div>
+<div class="now-banner" id="liveDateBanner"><span class="dot"></span><span class="date" id="liveDateText"></span><span class="time" id="liveTimeText"></span></div>
+<div class="drug-tabs">
+  <div class="drug-tab" id="tab-overview" onclick="switchTab('overview')" style="border-color:#1a1a1a">📊 Overview<span class="sub">Stack + Labs + Compounds</span></div>
+  <div class="drug-tab" id="tab-transform" onclick="switchTab('transform')" style="border-color:#0ea5e9">🦋 Transformation<span class="sub">Visual trajectory</span></div>
+  <div class="drug-tab" id="tab-mounjaro" onclick="switchTab('mounjaro')">👑 Mounjaro<span class="sub">tirzepatide · keystone</span></div>
+  <div class="drug-tab" id="tab-jardiance" onclick="switchTab('jardiance')">⏳ Jardiance<span class="sub">empagliflozin · longevity</span></div>
+  <div class="drug-tab" id="tab-repatha" onclick="switchTab('repatha')">🛡️ Repatha<span class="sub">evolocumab · CV fortress</span></div>
+  <div class="drug-tab" id="tab-ta1" onclick="switchTab('ta1')">⚔️ Tα1<span class="sub">thymosin α-1 · immune</span></div>
+</div>
+<div id="overviewContent"></div>
+<div id="transformContent" style="display:none"></div>
+<div id="drugContent" style="display:none">
+  <div class="controls">
+    <span class="ctrl-label">Show:</span>
+    <div class="toggle-group">
+      <button class="toggle-btn on" id="btn-stack" onclick="toggleLayer('stack')">With stack</button>
+      <button class="toggle-btn on" id="btn-solo" onclick="toggleLayer('solo')">Drug alone</button>
+    </div>
+    <span class="ctrl-label" style="margin-left:6px;">Sort:</span>
+    <div class="toggle-group">
+      <button class="sort-btn active" id="sort-optimal" onclick="sortBy('optimal')">Optimal</button>
+      <button class="sort-btn" id="sort-category" onclick="sortBy('category')">Category</button>
+      <button class="sort-btn" id="sort-accel" onclick="sortBy('accel')">Acceleration</button>
+    </div>
+  </div>
+  <div class="now-row" id="nowRow"></div>
+  <div class="chart-area"><div class="timeline-wrap"><div class="time-axis" id="timeAxis"></div><div id="beneRows"></div></div></div>
+  <div class="detail-panel" id="detailPanel"><div class="dp-title" id="dpTitle">Click any row</div><div class="dp-text" id="dpText"></div><div class="dp-stack-row" id="dpStack"></div></div>
+</div>
+<p class="note" id="bottomNote"></p>
+<script>
+const _M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const _today=new Date();const NOW_DS=_M[_today.getMonth()]+' '+_today.getDate()+', '+_today.getFullYear();
+const _msW=7*24*60*60*1000;
+function nw(s){return Math.max(0,Math.round((_today-s)/_msW));}
+function w2d(s,w){const d=new Date(s);d.setDate(d.getDate()+Math.round(w*7));return d;}
+function pD(s,w){const d=w2d(s,w);return _M[d.getMonth()]+" '"+String(d.getFullYear()).slice(2);}
+function fTS(s,w){const d=w2d(s,w);return _M[d.getMonth()]+' '+d.getFullYear();}
+// Live date banner
+function updateLiveBanner(){
+  const n=new Date();
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  document.getElementById('liveDateText').textContent='📍 '+days[n.getDay()]+', '+_M[n.getMonth()]+' '+n.getDate()+', '+n.getFullYear();
+  const h=n.getHours(),m=n.getMinutes();
+  const ampm=h>=12?'PM':'AM';
+  const h12=h%12||12;
+  document.getElementById('liveTimeText').textContent=h12+':'+String(m).padStart(2,'0')+' '+ampm+' — Protocol Month '+Math.round(nw(new Date('2024-02-01'))/4.33);
+}
+updateLiveBanner();setInterval(updateLiveBanner,60000);
+// Dynamic fractional year position for charts
+function getNowFractionalYear(){const y=_today.getFullYear();const start=new Date(y,0,1);const end=new Date(y+1,0,1);return y+((_today-start)/(end-start));}
+
+const DRUGS={
+mounjaro:{start:new Date('2024-02-01'),totalW:130,color:'#7B2D8B',accent:'#9B59B6',name:'Mounjaro',sub:'tirzepatide 7.5mg',role:'Keystone',sel:'#F3E5F5',
+benefits:[
+{id:'appetite',icon:'🧠',cat:'Metabolic',color:'#9B59B6',title:'Appetite suppression',onset:0,rampEnd:4,optimal_solo:13,optimal_stack:13,accel_weeks:0,ceiling_boost:0,detail:'Central GLP-1/GIP satiety. Fully established by month 3. Foundation enabling entire caloric deficit.',accelerators:[]},
+{id:'glucose',icon:'🩸',cat:'Metabolic',color:'#1D9E75',title:'Glucose normalization (HbA1c 7→5.4)',onset:0,rampEnd:8,optimal_solo:26,optimal_stack:17,accel_weeks:9,ceiling_boost:15,detail:'Incretin effect reversed T2DM completely. Jardiance adds 0.3-0.4% via renal excretion. Na-RALA improves receptor sensitivity.',accelerators:[{name:'Jardiance',strength:3,note:'Independent renal glucose excretion'},{name:'Na-RALA',strength:2,note:'Insulin sensitization'},{name:'Magnesium',strength:1,note:'Insulin signaling cofactor'}]},
+{id:'nutrient',icon:'⚡',cat:'Longevity',color:'#378ADD',title:'Nutrient sensing reset',onset:4,rampEnd:17,optimal_solo:39,optimal_stack:22,accel_weeks:17,ceiling_boost:20,detail:'Three independent nutrient sensing corrections: Mounjaro incretin + Jardiance AMPK + NMN SIRT1.',accelerators:[{name:'Jardiance',strength:3,note:'AMPK via complex I'},{name:'NMN',strength:3,note:'NAD+→SIRT1→AMPK'},{name:'Na-RALA',strength:2,note:'LKB1→AMPK'},{name:'Ezetimibe',strength:1,note:'AMPK-mTORC1'}]},
+{id:'visceral',icon:'📉',cat:'Metabolic',color:'#D85A30',title:'Visceral fat elimination',onset:4,rampEnd:26,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:40,detail:'GIP-R drives preferential visceral loss. 5 pharmacological + 7 behavioral drivers. Currently ~75%.',accelerators:[{name:'Jardiance',strength:3,note:'300 cal/day glucosuria'},{name:'Ezetimibe',strength:2,note:'NPC1L1 adipocyte reduction'},{name:'Enclomiphene',strength:2,note:'Testosterone visceral mobilization'},{name:'CJC/Ipa',strength:2,note:'GH pulse HSL activation'},{name:'Creatine',strength:1,note:'Lean mass preservation during deficit'}]},
+{id:'inflammation',icon:'🛡️',cat:'Longevity',color:'#E24B4A',title:'Anti-inflammatory (CRP -33%)',onset:4,rampEnd:26,optimal_solo:52,optimal_stack:35,accel_weeks:17,ceiling_boost:30,detail:'Strongest anti-inflammatory in stack. Jardiance senolytic adds SASP clearance. Omega-3 resolvins independent. Vitamin C supports resolution via neutrophil apoptosis + macrophage clearance.',accelerators:[{name:'Jardiance',strength:3,note:'Senolytic SASP clearance'},{name:'Omega-3',strength:3,note:'Resolvins/protectins'},{name:'Vitamin D3',strength:2,note:'NF-κB inhibitor'},{name:'Urolithin A',strength:2,note:'Mitophagy→ROS→NF-κB'},{name:'Vitamin C',strength:1,note:'Neutrophil apoptosis + macrophage clearance'},{name:'L-Carnosine',strength:1,note:'Anti-glycation reduces inflammatory AGEs'}]},
+{id:'beta',icon:'🔬',cat:'Metabolic',color:'#0F6E56',title:'Beta cell preservation',onset:4,rampEnd:26,optimal_solo:52,optimal_stack:52,accel_weeks:0,ceiling_boost:0,detail:'Direct GLP-1R trophic support — anti-apoptotic signaling for insulin-producing cells.',accelerators:[]},
+{id:'liver',icon:'🫘',cat:'Metabolic',color:'#BA7517',title:'MASH resolution (62%)',onset:8,rampEnd:26,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:15,detail:'ESSENCE: 62.9% resolution. ALT 12, AST 17 = largely resolved. Jardiance adds hepatic β-HB.',accelerators:[{name:'Jardiance',strength:3,note:'Hepatic β-HB fat oxidation'},{name:'Omega-3',strength:2,note:'Hepatic TG reduction'},{name:'Na-RALA',strength:2,note:'Hepatocyte mitochondrial protection'},{name:'Ubiquinol',strength:1,note:'Hepatic ETC support'}]},
+{id:'osa',icon:'😴',cat:'Quality of Life',color:'#378ADD',title:'Sleep apnea (-63% AHI)',onset:8,rampEnd:26,optimal_solo:52,optimal_stack:39,accel_weeks:13,ceiling_boost:10,detail:'SURMOUNT-OSA. Weight loss reduces pharyngeal fat. CPAP synergy. Cascades into HRV, cortisol, immune, recovery.',accelerators:[{name:'CPAP',strength:3,note:'Mechanical AHI synergy'},{name:'Jardiance',strength:2,note:'Additional weight loss'},{name:'Magnesium',strength:1,note:'GABA sleep onset'},{name:'Taurine',strength:1,note:'Inhibitory sleep support'},{name:'Magtein',strength:1,note:'Mg-L-threonate crosses BBB'}]},
+{id:'cancer_m',icon:'🔬',cat:'Longevity',color:'#7B2D8B',title:'Cancer protection (JAMA Onc 2025)',onset:8,rampEnd:39,optimal_solo:104,optimal_stack:65,accel_weeks:39,ceiling_boost:35,detail:'Strongest cancer pillar. JAMA Oncology ~20M patients. 6 tumor models. APE1 DNA repair. Combined: 10/13 mechanisms.',accelerators:[{name:'Jardiance',strength:3,note:'Warburg + AMPK/mTOR + chemo cardio HR 0.78'},{name:'NMN',strength:3,note:'PARP DNA repair via NAD+'},{name:'Urolithin A',strength:2,note:'SASP tumor microenvironment'},{name:'Omega-3',strength:2,note:'Anti-angiogenic VEGF'},{name:'Repatha',strength:1,note:'LDL 30 reduces oxLDL cancer microenvironment'},{name:'L-Carnosine',strength:1,note:'Anti-glycation reduces cancer-promoting AGEs'}]},
+{id:'cv_m',icon:'❤️',cat:'Cardiovascular',color:'#E24B4A',title:'CV protection (SURPASS-CVOT 2025)',onset:13,rampEnd:52,optimal_solo:104,optimal_stack:78,accel_weeks:26,ceiling_boost:25,detail:'SURPASS-CVOT (NEJM Dec 2025): 13,299 patients, 4yr, CV benefit CONFIRMED vs dulaglutide. Expanded MACE HR 0.88. Triple-layer: Repatha LDL 30 + Jardiance EMPA-REG -38% + Mounjaro metabolic. Tadalafil eNOS 4th layer. VESALIUS-CV adds Repatha primary prevention.',accelerators:[{name:'Repatha',strength:3,note:'LDL 30, CAC 0, VESALIUS-CV -25% MACE'},{name:'Jardiance',strength:3,note:'EMPA-REG -38% CV death'},{name:'Tadalafil',strength:2,note:'50M pt study: reduced mortality+dementia'},{name:'Omega-3',strength:1,note:'Epigenetic aging + CV mortality reduction'},{name:'MK-7',strength:1,note:'Calcium→bones not arteries'}]},
+{id:'kidney_m',icon:'🫘',cat:'Cardiovascular',color:'#5F5E5A',title:'Kidney protection (Lancet -16%)',onset:13,rampEnd:39,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:15,detail:'Lancet meta: -16% failure, -22% decline. Jardiance EMPA-KIDNEY adds -28%. Dual kidney defense.',accelerators:[{name:'Jardiance',strength:3,note:'EMPA-KIDNEY -28%'},{name:'Omega-3',strength:2,note:'Glomerular protection'},{name:'Vitamin D3',strength:2,note:'Podocyte VDR'}]},
+{id:'neuro_m',icon:'🧠',cat:'Longevity',color:'#534AB7',title:'Neuroprotection (amyloid/tau/APE1)',onset:13,rampEnd:52,optimal_solo:104,optimal_stack:78,accel_weeks:26,ceiling_boost:30,detail:'Unique: amyloid/tau clearance + APE1 neuronal DNA repair. EVOKE trials underway. Stack adds 6 synergists.',accelerators:[{name:'Vitamin D3',strength:3,note:'VDR→BDNF independent'},{name:'Jardiance',strength:2,note:'BDNF upregulation'},{name:'NMN',strength:2,note:'Neuronal NAD+'},{name:'Omega-3 (DHA)',strength:2,note:'Neuronal membrane'},{name:'Aniracetam',strength:1,note:'AMPA modulation'},{name:'Citicoline',strength:1,note:'Phosphatidylcholine synthesis'},{name:'P5P (B6)',strength:1,note:'Neurotransmitter cofactor'}]},
+{id:'aging_m',icon:'🧬',cat:'Longevity',color:'#0F6E56',title:'Biological aging (NCT07220473 active)',onset:8,rampEnd:52,optimal_solo:130,optimal_stack:104,accel_weeks:26,ceiling_boost:30,detail:'Phase 2 trial NOW REGISTERED: "Tirzepatide to Slow Biological Aging" in adults 55-70. Bio age ~40 vs chrono 52. Jardiance adds telomere + senolytic + 5.9% lifespan extension. Omega-3 2025: slowed epigenetic aging markers when combined with vitamin D. Tα1 addresses oldest domain (immune bio age ~60).',accelerators:[{name:'Jardiance',strength:3,note:'Telomere + senolytic + lifespan +5.9%'},{name:'NMN',strength:3,note:'NAD+/SIRT1/PARP'},{name:'Urolithin A',strength:2,note:'Mitophagy + immune rejuvenation (Nature Aging 2025)'},{name:'Thymosin α-1',strength:2,note:'Immune bio age ~60 → T-cell genesis'},{name:'Omega-3',strength:1,note:'2025: epigenetic aging + vitamin D synergy'},{name:'Vitamin C',strength:1,note:'Neutrophil function at ANC 1.1'}]}
+]},
+jardiance:{start:new Date('2026-01-04'),totalW:104,color:'#1D9E75',accent:'#5DCAA5',name:'Jardiance',sub:'empagliflozin 10mg',role:'Longevity Engine',sel:'#E1F5EE',
+benefits:[
+{id:'glucosuria',icon:'💧',cat:'Metabolic',color:'#1D9E75',title:'Glucosuria (~64g/day)',onset:0,rampEnd:1,optimal_solo:2,optimal_stack:2,accel_weeks:0,ceiling_boost:0,detail:'64g/day glucose excretion. Active within days. Mounjaro handles glycemic control; Jardiance adds independent renal disposal.',accelerators:[]},
+{id:'bp',icon:'🩺',cat:'CV',color:'#1D9E75',title:'BP / Natriuresis',onset:0,rampEnd:2,optimal_solo:4,optimal_stack:3,accel_weeks:1,ceiling_boost:5,detail:'Sodium excretion reduces preload. Taurine provides independent natriuretic support.',accelerators:[{name:'Taurine',strength:1,note:'Natriuretic'}]},
+{id:'ketones',icon:'🔥',cat:'Metabolic',color:'#D85A30',title:'Ketone elevation (β-HB)',onset:1,rampEnd:4,optimal_solo:12,optimal_stack:8,accel_weeks:4,ceiling_boost:15,detail:'BHB cardiac/brain fuel. Mounjaro adds independent ketone elevation. Ubiquinol supports mitochondrial oxidation.',accelerators:[{name:'Mounjaro',strength:3,note:'Independent ketone elevation'},{name:'Ubiquinol',strength:2,note:'BHB oxidation via complex II'}]},
+{id:'visceral_j',icon:'📉',cat:'Metabolic',color:'#D85A30',title:'Visceral fat (300 cal/day)',onset:2,rampEnd:8,optimal_solo:52,optimal_stack:30,accel_weeks:22,ceiling_boost:40,detail:'Mounjaro is primary driver — 22wk acceleration. Ezetimibe, enclomiphene, CJC/Ipa add independent pathways.',accelerators:[{name:'Mounjaro',strength:3,note:'GIP-R preferential visceral'},{name:'Ezetimibe',strength:2,note:'NPC1L1 adipocyte'},{name:'Enclomiphene',strength:2,note:'Testosterone mobilization'}]},
+{id:'ampk',icon:'🔬',cat:'Longevity',color:'#378ADD',title:'AMPK / mTOR (>200%)',onset:3,rampEnd:10,optimal_solo:26,optimal_stack:15,accel_weeks:11,ceiling_boost:25,detail:'AMPK via complex I. Five total AMPK entry points with stack: Jardiance + NMN + Na-RALA + Mounjaro + Ezetimibe.',accelerators:[{name:'NMN',strength:3,note:'SIRT1→AMPK'},{name:'Na-RALA',strength:2,note:'LKB1→AMPK'},{name:'Mounjaro',strength:2,note:'GLP-1 AMPK'},{name:'Ezetimibe',strength:1,note:'AMPK-mTORC1'}]},
+{id:'epc',icon:'🩸',cat:'CV',color:'#D4537E',title:'EPC vascular repair',onset:3,rampEnd:12,optimal_solo:26,optimal_stack:22,accel_weeks:4,ceiling_boost:30,detail:'EPC mobilisation. Tadalafil eNOS improves homing. Vitamin D3 supports differentiation. Omega-3 extends half-life.',accelerators:[{name:'Tadalafil',strength:2,note:'eNOS/NO EPC homing'},{name:'Vitamin D3',strength:1,note:'EPC differentiation'},{name:'Omega-3',strength:1,note:'EPC half-life'}]},
+{id:'inflam_j',icon:'🛡️',cat:'Longevity',color:'#1D9E75',title:'Anti-inflammatory (NF-κB)',onset:4,rampEnd:13,optimal_solo:26,optimal_stack:17,accel_weeks:9,ceiling_boost:35,detail:'NF-κB + NLRP3 via BHB. Mounjaro CRP -33% is strongest. Vitamin C supports inflammatory resolution via neutrophil apoptosis pathway.',accelerators:[{name:'Mounjaro',strength:3,note:'CRP -33%'},{name:'Omega-3',strength:3,note:'Resolvins'},{name:'Urolithin A',strength:2,note:'Mitophagy→ROS'},{name:'Vitamin C',strength:1,note:'Neutrophil apoptosis + resolution'},{name:'Na-RALA',strength:1,note:'Redox NF-κB'}]},
+{id:'renal',icon:'🫘',cat:'CV',color:'#5F5E5A',title:'Renal (EMPA-KIDNEY -28%)',onset:4,rampEnd:17,optimal_solo:35,optimal_stack:26,accel_weeks:9,ceiling_boost:10,detail:'eGFR 103 protected. Mounjaro adds Lancet meta -16%/-22%. Omega-3 glomerular, D3 podocyte.',accelerators:[{name:'Mounjaro',strength:2,note:'Lancet renal meta'},{name:'Omega-3',strength:1,note:'Glomerular'},{name:'Vitamin D3',strength:1,note:'Podocyte VDR'}]},
+{id:'mitophagy',icon:'⚡',cat:'Longevity',color:'#7F77DD',title:'Mitophagy (100% now)',onset:5,rampEnd:13,optimal_solo:22,optimal_stack:13,accel_weeks:9,ceiling_boost:20,detail:'Two pathways at 100%: AMPK/FUNDC1 + Urolithin A Pink1/Parkin. Maintenance: 6 compounds. NMN note: Feb 2026 study showed high-dose NMN may blunt exercise-induced mito biogenesis — take NMN PM/evening, not pre-workout.',accelerators:[{name:'Urolithin A',strength:3,note:'Pink1/Parkin — Nature Aging 2025 immune bonus'},{name:'NMN',strength:2,note:'SIRT3 selectivity — dose PM to avoid exercise interference'},{name:'Ubiquinol',strength:2,note:'Complex II ROS reduction'},{name:'Na-RALA',strength:1,note:'Mitochondrial antioxidant'},{name:'Taurine',strength:1,note:'Membrane stability'}]},
+{id:'senolytic',icon:'🧹',cat:'Longevity',color:'#BA7517',title:'Senolytic (~65% clearance)',onset:6,rampEnd:22,optimal_solo:52,optimal_stack:35,accel_weeks:17,ceiling_boost:30,detail:'AMPK→AICAR→immune clearance. 2024: +5.9% lifespan. npj Aging 2025: senotherapeutic class confirmed. Tα1 stimulates new T-cells for immune-mediated clearance. Vitamin C optimizes neutrophil debris removal. UA rejuvenates existing immune cells.',accelerators:[{name:'Urolithin A',strength:3,note:'Nature Aging 2025: immune rejuvenation + SASP'},{name:'Thymosin α-1',strength:3,note:'T-cell genesis for immune-mediated senolysis'},{name:'Mounjaro',strength:2,note:'Visceral fat reservoir reduction'},{name:'NMN',strength:2,note:'NAD+ supports clearance cells'},{name:'Vitamin C',strength:1,note:'Neutrophil phagocytic clearance of debris'}]},
+{id:'neuro_j',icon:'🧠',cat:'Longevity',color:'#534AB7',title:'Neuroprotection (BDNF)',onset:6,rampEnd:22,optimal_solo:52,optimal_stack:35,accel_weeks:17,ceiling_boost:25,detail:'BDNF upregulation. Mounjaro adds amyloid/tau + APE1. D3→BDNF independent. NMN neuronal NAD+.',accelerators:[{name:'Mounjaro',strength:3,note:'Amyloid/tau + APE1'},{name:'Vitamin D3',strength:3,note:'VDR→BDNF'},{name:'NMN',strength:2,note:'Neuronal NAD+'},{name:'Aniracetam',strength:1,note:'AMPA modulation'}]},
+{id:'telomere',icon:'🧬',cat:'Longevity',color:'#0F6E56',title:'Telomere elongation',onset:8,rampEnd:35,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:40,detail:'Zhang 2025 RCT — first human evidence. Master switch: 4-5 downstream hallmarks. NMN→SIRT1→TERT + D3→VDR→TERT.',accelerators:[{name:'NMN',strength:3,note:'SIRT1→TERT telomerase'},{name:'Vitamin D3',strength:3,note:'VDR→TERT independent'},{name:'Omega-3',strength:1,note:'Telomere-protective antioxidant'}]},
+{id:'cancer_j',icon:'🔬',cat:'Longevity',color:'#7B2D8B',title:'Cancer (10/13 mechanisms)',onset:3,rampEnd:17,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:35,detail:'Warburg glucose starvation + AMPK/mTOR + senolytic clearance + chemo cardioprotection HR 0.78. Mounjaro = strongest pillar.',accelerators:[{name:'Mounjaro',strength:3,note:'JAMA Oncology 2025'},{name:'NMN',strength:3,note:'PARP DNA repair'},{name:'L-Carnosine',strength:1,note:'Anti-glycation AGE reduction'}]},
+{id:'cv_j',icon:'❤️',cat:'CV',color:'#E24B4A',title:'CV death (-38% EMPA-REG)',onset:13,rampEnd:52,optimal_solo:104,optimal_stack:78,accel_weeks:26,ceiling_boost:15,detail:'Gold standard: -38% CV death, -35% HF, -32% all-cause. Repatha VESALIUS-CV adds -25% primary prevention MACE. Tadalafil AJM 2025: 50M pts, reduced all-cause mortality + dementia. MK-7 CAC defense.',accelerators:[{name:'Repatha',strength:3,note:'FOURIER + VESALIUS-CV primary prevention'},{name:'Mounjaro',strength:3,note:'SURPASS-CVOT confirmed'},{name:'Tadalafil',strength:2,note:'AJM 2025: mortality + dementia reduction'},{name:'MK-7',strength:1,note:'Calcium→bones, CAC 0 defense'}]},
+{id:'gut',icon:'🦠',cat:'Metabolic',color:'#1D9E75',title:'Gut microbiome (SCFA)',onset:4,rampEnd:13,optimal_solo:26,optimal_stack:22,accel_weeks:4,ceiling_boost:10,detail:'2025 RCT: SCFA bacteria increase. Omega-3 anti-inflammatory gut support.',accelerators:[{name:'Omega-3',strength:1,note:'Gut anti-inflammatory'}]}
+]},
+repatha:{start:new Date('2024-08-01'),totalW:130,color:'#C62828',accent:'#E24B4A',name:'Repatha',sub:'evolocumab 140mg q14d',role:'CV Fortress',sel:'#FFEBEE',
+benefits:[
+{id:'ldl',icon:'🩸',cat:'Lipid',color:'#C62828',title:'LDL-C 30 (PCSK9i + Ezetimibe)',onset:0,rampEnd:2,optimal_solo:4,optimal_stack:4,accel_weeks:0,ceiling_boost:0,detail:'Dual-pathway: Repatha receptor recycling + Ezetimibe intestinal block = LDL 30. Below 10th %ile for age 20.',accelerators:[]},
+{id:'lipid',icon:'📊',cat:'Lipid',color:'#E24B4A',title:'Full lipid panel (TC/HDL 1.6)',onset:0,rampEnd:4,optimal_solo:8,optimal_stack:6,accel_weeks:2,ceiling_boost:10,detail:'TC 111, HDL 70, TG 41. Mounjaro drives HDL elevation + TG reduction via insulin normalization.',accelerators:[{name:'Mounjaro',strength:3,note:'HDL↑ TG↓'},{name:'Ezetimibe',strength:3,note:'Dual-pathway LDL'},{name:'Omega-3',strength:2,note:'TG reduction'}]},
+{id:'cac',icon:'🫀',cat:'CV',color:'#C62828',title:'CAC = 0 defense',onset:2,rampEnd:13,optimal_solo:52,optimal_stack:26,accel_weeks:26,ceiling_boost:20,detail:'Zero coronary calcium at 52 with bilateral parental CVD = exceptional. MK-7 directs Ca to bones. Repeat scan Aug 2026.',accelerators:[{name:'MK-7',strength:3,note:'Vitamin K2: calcium→bones not arteries'},{name:'Vitamin D3',strength:2,note:'Calcium metabolism regulation'},{name:'Mounjaro',strength:2,note:'Reduces inflammatory calcification'},{name:'Jardiance',strength:2,note:'Senolytic vascular clearance'}]},
+{id:'plaque',icon:'🔬',cat:'CV',color:'#D85A30',title:'Plaque regression (GLAGOV 64%)',onset:4,rampEnd:26,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:25,detail:'GLAGOV: 64.3% regression on IVUS. At LDL 30, well below regression threshold (~70).',accelerators:[{name:'Mounjaro',strength:3,note:'Reduces atherogenic milieu'},{name:'Jardiance',strength:2,note:'Senolytic endothelial clearance'},{name:'Tadalafil',strength:2,note:'eNOS over plaque sites'},{name:'Omega-3',strength:2,note:'Plaque stabilization'}]},
+{id:'endothelial',icon:'🩺',cat:'CV',color:'#378ADD',title:'Endothelial function (pulse age 57→)',onset:4,rampEnd:26,optimal_solo:52,optimal_stack:30,accel_weeks:22,ceiling_boost:35,detail:'LDL 30 reduces oxLDL deposition. Tadalafil eNOS = most direct enhancer. Jardiance telomere elongation in endothelial cells. NMN endothelial SIRT1. Vitamin C regenerates vitamin E + supports collagen in vessel walls.',accelerators:[{name:'Tadalafil',strength:3,note:'PDE5→eNOS→NO — most direct'},{name:'Jardiance',strength:3,note:'Endothelial telomere + senolytic'},{name:'NMN',strength:2,note:'Endothelial SIRT1'},{name:'Mounjaro',strength:2,note:'Insulin signaling restoration'},{name:'Vitamin C',strength:1,note:'Regenerates vit E + vessel collagen'},{name:'Omega-3 (EPA)',strength:1,note:'Endothelial membrane composition'}]},
+{id:'mace',icon:'❤️',cat:'CV',color:'#C62828',title:'MACE (-15% FOURIER + VESALIUS-CV)',onset:4,rampEnd:52,optimal_solo:104,optimal_stack:78,accel_weeks:26,ceiling_boost:20,detail:'FOURIER: -15% MACE, -20% MI, -27% MI/stroke/CV death. NEW: VESALIUS-CV (NEJM Nov 2025): -25% MACE in PRIMARY prevention (no prior MI/stroke). -31% MACE in diabetes subgroup. -36% MI reduction. First PCSK9i trial proving benefit in YOUR exact category.',accelerators:[{name:'Jardiance',strength:3,note:'EMPA-REG -38% CV death'},{name:'Mounjaro',strength:3,note:'SURPASS-CVOT confirmed'},{name:'Tadalafil',strength:2,note:'AJM 2025: 50M pts reduced mortality+dementia'}]},
+{id:'vasc_inflam',icon:'🛡️',cat:'CV',color:'#1D9E75',title:'Vascular inflammation (triple-layer)',onset:4,rampEnd:26,optimal_solo:52,optimal_stack:26,accel_weeks:26,ceiling_boost:35,detail:'Three layers: Repatha reduces oxLDL INPUT, Mounjaro CRP -33% reduces ENVIRONMENT, Jardiance clears vascular senescent CELLS.',accelerators:[{name:'Mounjaro',strength:3,note:'CRP -33%'},{name:'Jardiance',strength:3,note:'Vascular senolytic'},{name:'Omega-3',strength:2,note:'Vascular resolvins'},{name:'Taurine',strength:1,note:'Vascular smooth muscle'}]},
+{id:'stroke',icon:'🧠',cat:'CV',color:'#534AB7',title:'Stroke prevention',onset:4,rampEnd:52,optimal_solo:104,optimal_stack:78,accel_weeks:26,ceiling_boost:15,detail:'LDL 30 reduces carotid/cerebral atherosclerosis. Jardiance BP reduction. Tadalafil cerebral flow.',accelerators:[{name:'Jardiance',strength:2,note:'BP reduction + natriuresis'},{name:'Tadalafil',strength:2,note:'Cerebral blood flow via NO'}]},
+{id:'cancer_r',icon:'🔬',cat:'Longevity',color:'#7B2D8B',title:'Cancer microenvironment',onset:8,rampEnd:26,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:15,detail:'OxLDL promotes tumor microenvironment. LDL 30 minimizes. Layer on top of Mounjaro + Jardiance cancer mechanisms.',accelerators:[{name:'Mounjaro',strength:3,note:'JAMA Oncology primary'},{name:'Jardiance',strength:3,note:'Warburg + senolytic'}]},
+{id:'mortality',icon:'⏳',cat:'Longevity',color:'#0F6E56',title:'All-cause mortality reduction',onset:13,rampEnd:52,optimal_solo:130,optimal_stack:104,accel_weeks:26,ceiling_boost:25,detail:'CVD = #1 killer. FOURIER + VESALIUS-CV now cover BOTH secondary AND primary prevention. Tadalafil AJM 2025 (50M pts): independent mortality reduction + dementia prevention. Jardiance lifespan +5.9% in aged mice. Tα1 addresses immune vulnerability (WBC 2.9) that could otherwise become mortality risk.',accelerators:[{name:'Jardiance',strength:3,note:'EMPA-REG -38% + lifespan +5.9%'},{name:'Mounjaro',strength:3,note:'SURPASS-CVOT metabolic'},{name:'Tadalafil',strength:2,note:'AJM 2025: mortality + dementia'},{name:'Thymosin α-1',strength:1,note:'Immune resilience at WBC 2.9'}]}
+]},
+ta1:{start:new Date('2026-04-01'),totalW:78,color:'#0891B2',accent:'#22D3EE',name:'Thymosin α-1',sub:'1.6mg SC 2x/wk → 1x/wk',role:'Immune Architect',sel:'#ECFEFF',
+benefits:[
+{id:'tcell',icon:'🧬',cat:'Immune Genesis',color:'#0891B2',title:'T-cell maturation (CD4+/CD8+)',onset:2,rampEnd:8,optimal_solo:26,optimal_stack:18,accel_weeks:8,ceiling_boost:30,detail:'Primary mechanism. Tα1 binds TLR2/TLR9 on thymic dendritic cells → stimulates T-cell differentiation from progenitors. Increases CD4+ helper and CD8+ cytotoxic T-cell counts. At WBC 2.9, every new T-cell produced is high-value. Zinc provides thymulin cofactor (the thymus hormone that Tα1 mimics). Vitamin D activates VDR on maturing T-cells for proper differentiation. NMN provides NAD+ energy for the explosive proliferation during thymic education.',accelerators:[{name:'Zinc 20mg',strength:3,note:'Thymulin cofactor — the thymus hormone Tα1 mimics'},{name:'Vitamin D3',strength:3,note:'VDR on T-cell precursors → proper differentiation'},{name:'NMN',strength:2,note:'NAD+ for T-cell proliferative burst'},{name:'P5P (B6)',strength:2,note:'Lymphocyte proliferation cofactor'},{name:'Taurine',strength:1,note:'Protects maturing T-cells from oxidative damage'}]},
+{id:'nk',icon:'🗡️',cat:'Immune Genesis',color:'#E24B4A',title:'NK cell activation',onset:2,rampEnd:6,optimal_solo:13,optimal_stack:10,accel_weeks:3,ceiling_boost:20,detail:'Tα1 increases NK cell cytotoxicity — your cancer surveillance system. NK cells kill virally infected cells and emerging tumor cells without prior antigen exposure. Fastest immune mechanism to respond. Jardiance granzyme B upregulation arms the NK cells Tα1 activates. Urolithin A (Nature Aging 2025) rejuvenates existing NK cell mitochondria so they have energy to kill. Sleep is the strongest behavioral NK amplifier — your 84-min deep sleep nights are when NK activity peaks.',accelerators:[{name:'Jardiance',strength:3,note:'Zhang 2025: granzyme B upregulation in cytotoxic cells'},{name:'Urolithin A',strength:3,note:'Nature Aging 2025: immune cell mitochondrial rejuvenation'},{name:'Vitamin D3',strength:2,note:'NK cell cytotoxicity activation via VDR'},{name:'Zinc',strength:1,note:'NK cell development and function'}]},
+{id:'dendritic',icon:'🔬',cat:'Immune Genesis',color:'#7F77DD',title:'Dendritic cell maturation',onset:4,rampEnd:12,optimal_solo:26,optimal_stack:20,accel_weeks:6,ceiling_boost:20,detail:'Dendritic cells are antigen-presenting cells — the immune system\'s intelligence officers. They capture pathogen fragments and present them to T-cells, initiating the adaptive immune response. Tα1 enhances DC maturation and antigen cross-presentation. With your low WBC, efficient antigen presentation means faster, more targeted immune responses from fewer cells. Vitamin D is the strongest DC modulator in your stack.',accelerators:[{name:'Vitamin D3',strength:3,note:'VDR on dendritic cells → maturation + antigen presentation'},{name:'P5P (B6)',strength:2,note:'Immune cell differentiation cofactor'},{name:'Omega-3',strength:1,note:'DC membrane composition for antigen processing'},{name:'NMN',strength:1,note:'NAD+ for DC metabolic demands during antigen processing'}]},
+{id:'th1th2',icon:'⚖️',cat:'Immune Modulation',color:'#1D9E75',title:'Th1/Th2 cytokine rebalancing',onset:3,rampEnd:10,optimal_solo:20,optimal_stack:14,accel_weeks:6,ceiling_boost:25,detail:'Tα1 shifts the immune balance from Th2 (allergy, histamine) toward Th1 (infection-fighting). Directly relevant: your March cold/allergy episode diverted immune resources to Th2 histamine responses. Tα1 rebalances this → more bandwidth for pathogen defense, less wasted on allergic reactivity. Loratadine + Flonase suppress Th2 externally; Tα1 rebalances internally. Omega-3 resolvins support the resolution of Th2-driven inflammation.',accelerators:[{name:'Omega-3',strength:2,note:'Resolvins resolve Th2-driven inflammation'},{name:'Vitamin D3',strength:2,note:'Th1/Th2 balance modulator via VDR'},{name:'Taurine',strength:1,note:'Anti-inflammatory support during rebalancing'},{name:'Na-RALA',strength:1,note:'NF-κB modulation supports Th1 shift'}]},
+{id:'wbc_recovery',icon:'📈',cat:'Immune Recovery',color:'#059669',title:'WBC/ANC recovery trajectory',onset:4,rampEnd:16,optimal_solo:26,optimal_stack:22,accel_weeks:4,ceiling_boost:15,detail:'The clinical endpoint: WBC from 2.9 toward 3.5-4.0+, ANC from 1.1 toward 1.5+. Tα1 stimulates new cell production; simultaneously, zinc antagonizes elevated copper (125) that may be suppressing marrow, and R-ALA chelates excess copper from tissue stores. If BEN (benign ethnic neutropenia) is contributing, Tα1 may raise counts above the constitutional baseline by increasing cell production rate. April labs (Wk 2-3 of Tα1) = earliest signal. July labs (Wk 13) = definitive loading phase assessment.',accelerators:[{name:'Zinc 20mg',strength:3,note:'Copper antagonist → marrow decompression'},{name:'Na-RALA',strength:3,note:'Copper chelation from tissue stores'},{name:'Vitamin D3',strength:2,note:'Hematopoietic stem cell support'},{name:'P5P (B6)',strength:1,note:'Lymphocyte proliferation cofactor'},{name:'Taurine',strength:1,note:'Neutrophil taurochloramine — arms existing neutrophils'}]},
+{id:'senolysis_immune',icon:'🧹',cat:'Longevity',color:'#BA7517',title:'Immune-mediated senolysis',onset:6,rampEnd:18,optimal_solo:52,optimal_stack:30,accel_weeks:22,ceiling_boost:35,detail:'Tα1 produces new T-cells → Jardiance downregulates PD-L1 on senescent cells → new T-cells recognize and clear unmasked zombie cells. This is the convergence mechanism: Tα1 builds the army, Jardiance strips the camouflage. Combined: potentially the most potent senolytic strategy in the protocol. Urolithin A rejuvenates existing immune cells so they can participate in clearance. NMN provides the NAD+ fuel for the energy-intensive process of killing senescent cells.',accelerators:[{name:'Jardiance',strength:3,note:'AMPK→AICAR→PD-L1 downregulation on senescent cells'},{name:'Urolithin A',strength:3,note:'Rejuvenates immune cells for clearance duty'},{name:'NMN',strength:2,note:'NAD+ fuels energy-intensive senescent cell killing'},{name:'Mounjaro',strength:2,note:'Reduces visceral fat — largest senescent cell reservoir'},{name:'Vitamin C',strength:1,note:'Neutrophil phagocytic debris cleanup after senolysis'}]},
+{id:'cancer_immune',icon:'🔬',cat:'Longevity',color:'#7B2D8B',title:'Cancer immunosurveillance',onset:8,rampEnd:22,optimal_solo:52,optimal_stack:35,accel_weeks:17,ceiling_boost:30,detail:'At WBC 2.9, cancer immunosurveillance is compromised — fewer immune cells patrolling for emerging tumor cells. Tα1 restores T-cell and NK cell populations that detect and destroy pre-cancerous cells. Jardiance granzyme B arms CTLs with killing enzymes. Repatha LDL 30 minimizes the oxLDL that feeds tumor microenvironments. NMN PARP supports DNA repair in immune cells themselves. This is the layer most invisible but most consequential long-term.',accelerators:[{name:'Jardiance',strength:3,note:'Granzyme B + AMPK tumor metabolism disruption'},{name:'Mounjaro',strength:3,note:'JAMA Oncology 2025: 20M patient cancer reduction'},{name:'Repatha',strength:2,note:'LDL 30 minimizes oxLDL tumor microenvironment'},{name:'NMN',strength:2,note:'PARP DNA repair in immune surveillance cells'},{name:'Urolithin A',strength:1,note:'SASP reduction in tumor microenvironment'}]},
+{id:'vaccine',icon:'💉',cat:'Immune Function',color:'#378ADD',title:'Vaccine & infection response',onset:2,rampEnd:8,optimal_solo:16,optimal_stack:12,accel_weeks:4,ceiling_boost:20,detail:'Tα1 is approved in 35+ countries specifically for enhancing vaccine response in immunocompromised patients. COVID-19 data: 60% mortality reduction via T-cell restoration. At WBC 2.9, your current vaccine responses are suboptimal — fewer T-cells to mount antibody-producing B-cell responses. Tα1 directly addresses this. Zinc is the most critical co-factor: zinc-deficient patients show 50% reduced vaccine antibody titers. Your Microzinc 20mg ensures optimal zinc status for vaccine response.',accelerators:[{name:'Zinc 20mg',strength:3,note:'50% antibody titer increase vs zinc-deficient'},{name:'Vitamin D3',strength:2,note:'Antimicrobial peptides + T-cell activation'},{name:'NMN',strength:1,note:'NAD+ for immune cell metabolic burst during infection'},{name:'Omega-3',strength:1,note:'Resolution of post-infection inflammation'}]},
+{id:'loading_transition',icon:'🔄',cat:'Protocol',color:'#64748B',title:'Loading → Maintenance transition',onset:0,rampEnd:26,optimal_solo:26,optimal_stack:26,accel_weeks:0,ceiling_boost:0,detail:'Protocol milestone: 1.6mg 2x/week for 26 weeks (loading), then 1x/week maintenance. Loading phase saturates thymic receptors and establishes immune reconstitution momentum. Maintenance sustains gains. April labs (Wk 2-3) = earliest signal. July labs (Wk 13) = definitive assessment. If WBC/ANC improving at July, loading is working. If flat, dose escalation or combination strategy needed. October 2026 = transition to maintenance.',accelerators:[]}
+]}
+};
+
+let currentDrug=null,sortMode='optimal',showStack=true,showSolo=true,selectedId=null;
+function getDrugNowW(d){return nw(d.start);}
+function sortedB(d){const b=[...d.benefits];if(sortMode==='optimal')return b.sort((a,b)=>a.optimal_stack-b.optimal_stack);if(sortMode==='category')return b.sort((a,b)=>a.cat.localeCompare(b.cat)||a.optimal_stack-b.optimal_stack);if(sortMode==='accel')return b.sort((a,b)=>b.accel_weeks-a.accel_weeks);return b;}
+function wPct(d,w){return(w/d.totalW)*100;}
+
+function buildOverview(){
+  const el=document.getElementById('overviewContent');
+  let h='<div style="background:linear-gradient(90deg,#f0fdf410,#ecfdf520,#f0fdf410);border:1px solid #d1fae520;border-radius:6px;padding:5px 10px;margin-bottom:10px;text-align:center;font-size:9px;color:#059669"><strong>📍 Dashboard loaded:</strong> '+NOW_DS+' — Protocol Month '+Math.round(nw(new Date('2024-02-01'))/4.33)+' — All timelines reflect today\'s date</div>';
+  h+='<div class="ov-section"><h3>Protocol at a Glance — All Compounds</h3>';
+  // Drug summary cards
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">';
+  Object.values(DRUGS).forEach(d=>{
+    const nowW=getDrugNowW(d);let at100=0,inP=0;
+    d.benefits.forEach(b=>{if(nowW>=b.optimal_stack)at100++;else if(nowW>=b.onset)inP++;});
+    h+='<div style="flex:1;min-width:180px;background:#f7f7f5;border-radius:8px;padding:10px;border-top:3px solid '+d.color+'"><div style="font-size:11px;font-weight:600;color:'+d.color+'">'+d.name+'</div><div style="font-size:8px;color:#888">'+d.sub+' · '+d.role+'</div><div style="margin-top:6px;display:flex;gap:4px"><span class="ov-badge" style="background:'+d.color+'">✅ '+at100+'</span><span class="ov-badge" style="background:#EF9F27">⚡ '+inP+'</span><span class="ov-badge" style="background:#B4B2A9">'+d.benefits.length+' total</span></div></div>';
+  });
+  h+='</div></div>';
+  // Full compound table
+  h+='<div class="ov-section"><h3>Complete Compound Map — 26 Active Items</h3>';
+  h+='<div class="ov-compound-grid">';
+  // Rx
+  h+='<div style="background:#f7f7f5;border-radius:8px;padding:10px;border-top:3px solid #7B2D8B"><div style="font-size:10px;font-weight:600;color:#7B2D8B;margin-bottom:5px">💊 Prescriptions (7 Rx + 2 Peptides)</div><div style="font-size:9px;line-height:1.8;color:#555">';
+  h+='<span style="font-weight:600;color:#7B2D8B">👑 Mounjaro</span> tirzepatide 7.5mg — GLP-1/GIP keystone · <span style="color:#059669;font-size:8px">SURPASS-CVOT Dec 2025: CV benefit confirmed</span><br>';
+  h+='<span style="font-weight:600;color:#1D9E75">🧬 Jardiance</span> empagliflozin 10mg — SGLT2i longevity engine · <span style="color:#059669;font-size:8px">2024: +5.9% lifespan in mice · 2025: senotherapeutic class confirmed</span><br>';
+  h+='<span style="font-weight:600;color:#C62828">🛡️ Repatha</span> evolocumab 140mg q14d — PCSK9i CV fortress · <span style="color:#059669;font-size:8px">VESALIUS-CV 2025: PRIMARY prevention proven, -31% MACE</span><br>';
+  h+='<span style="font-weight:600">💊 Ezetimibe</span> — NPC1L1 inhibitor (LDL synergy + adipocyte)<br>';
+  h+='<span style="font-weight:600">💊 Enclomiphene</span> — SERM (testosterone → visceral fat + muscle)<br>';
+  h+='<span style="font-weight:600">💊 Tadalafil 5mg</span> — PDE5i daily · <span style="color:#059669;font-size:8px">AJM 2025: 50M patients — reduced mortality, MI, stroke, dementia</span><br>';
+  h+='<span style="font-weight:600;color:#888">💉 CJC-1295/Ipa</span> — GH peptide M-F (paused for April IGF-1 baseline)<br>';
+  h+='<span style="font-weight:600;color:#E24B4A">💉 Thymosin α-1 1.6mg</span> — thymic peptide 2x/wk × 6mo → 1x/wk maint · <span style="color:#059669;font-size:8px">ACTIVE: T-cell genesis + immune rejuvenation for WBC 2.9</span>';
+  h+='</div></div>';
+  // Supplements
+  h+='<div style="background:#f7f7f5;border-radius:8px;padding:10px;border-top:3px solid #378ADD"><div style="font-size:10px;font-weight:600;color:#378ADD;margin-bottom:5px">🧪 Supplements (17 active + 1 pending)</div><div style="font-size:9px;line-height:1.7;color:#555">';
+  h+='<strong>Tier 1:</strong> NMN 250mg <span style="color:#d97706;font-size:7px">⚠️ PM dosing recommended</span> · Ubiquinol 200mg · Na-RALA 300mg · Urolithin A 700mg <span style="color:#059669;font-size:7px">⬆️ Nature Aging 2025: immune rejuvenation — consider 1000mg</span> · Omega-3 <span style="color:#059669;font-size:7px">⬆️ epigenetic aging + D synergy</span> · Creatine 5g · HMB 3g <span style="color:#059669;font-size:7px">⬆️ GLP-1 validated 2025</span> · <span style="color:#E24B4A;font-weight:600">Vitamin C 1000mg</span> <span style="color:#059669;font-size:7px">NEW: neutrophil optimizer at ANC 1.1</span><br>';
+  h+='<strong>Tier 2:</strong> Microzinc 20mg · MK-7 100mcg · Mg Bisglycinate · Magtein · Taurine 1000mg <span style="color:#dc2626;font-size:7px">⬇️ Science 2025: longevity claim weakened — keep for sleep/cardio</span> · ADKE · Super Carnosine · P5P 50mg<br>';
+  h+='<strong>Training:</strong> Aniracetam 400mg · Citicoline 250mg<br>';
+  h+='<strong style="color:#E24B4A">Removed:</strong> TMG · GLP-1 Synbiotic';
+  h+='</div></div></div></div>';
+  // Labs
+  h+='<div class="ov-section"><h3>Latest Labs — January 2026</h3>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:7px">';
+  h+='<div style="background:#f7f7f5;border-radius:7px;padding:8px;border-left:3px solid #1D9E75"><div style="font-size:9px;font-weight:600;color:#1D9E75;margin-bottom:3px">Metabolic</div><div style="font-size:8px;line-height:1.7;color:#555"><strong>HbA1c:</strong> <span style="color:#1D9E75;font-weight:700">5.4%</span> (was 7.0)<br><strong>FG:</strong> <span style="color:#1D9E75;font-weight:700">87</span> (was 196)<br><strong>TSH:</strong> 1.03 · <strong>T:</strong> 563</div></div>';
+  h+='<div style="background:#f7f7f5;border-radius:7px;padding:8px;border-left:3px solid #C62828"><div style="font-size:9px;font-weight:600;color:#C62828;margin-bottom:3px">Lipids</div><div style="font-size:8px;line-height:1.7;color:#555"><strong>LDL:</strong> <span style="color:#C62828;font-weight:700">30</span> · <strong>HDL:</strong> <span style="color:#1D9E75;font-weight:700">70</span><br><strong>TG:</strong> <span style="color:#1D9E75;font-weight:700">41</span> · <strong>TC/HDL:</strong> 1.6<br><strong>CAC:</strong> <span style="color:#1D9E75;font-weight:700">0</span></div></div>';
+  h+='<div style="background:#f7f7f5;border-radius:7px;padding:8px;border-left:3px solid #378ADD"><div style="font-size:9px;font-weight:600;color:#378ADD;margin-bottom:3px">Kidney & Liver</div><div style="font-size:8px;line-height:1.7;color:#555"><strong>eGFR:</strong> <span style="color:#1D9E75;font-weight:700">103</span><br><strong>ALT:</strong> 12 · <strong>AST:</strong> 17<br><strong>PSA:</strong> 1.3</div></div>';
+  h+='<div style="background:#f7f7f5;border-radius:7px;padding:8px;border-left:3px solid #E24B4A"><div style="font-size:9px;font-weight:600;color:#E24B4A;margin-bottom:3px">Hematology ⚠️</div><div style="font-size:8px;line-height:1.7;color:#555"><strong>WBC:</strong> <span style="color:#E24B4A;font-weight:700">2.9</span> (LOW)<br><strong>ANC:</strong> <span style="color:#E24B4A;font-weight:700">1.1</span> (borderline)<br><strong style="color:#E24B4A">Workup PENDING</strong></div></div>';
+  h+='</div>';
+  h+='<div style="margin-top:7px;background:#f7f7f5;border-radius:7px;padding:8px;border-left:3px solid #D85A30"><div style="font-size:9px;font-weight:600;color:#D85A30;margin-bottom:3px">Body Composition (MorphoScan Mar 5)</div><div style="font-size:8px;line-height:1.7;color:#555"><strong>Weight:</strong> 211 lb → 185-190 target · <strong>BF:</strong> 27.2% → 18-20% · <strong>Visceral:</strong> <span style="color:#E24B4A;font-weight:700">10.0 HIGH</span> · <strong>Bio Age:</strong> <span style="color:#1D9E75;font-weight:700">~40</span> vs Chrono 52</div></div>';
+  h+='</div>';
+  // April labs
+  h+='<div class="ov-section"><h3>📋 April Labs (Target Apr 14-20)</h3><div style="font-size:8px;color:#555;line-height:1.6;background:#FFF8E1;padding:8px;border-radius:6px;border-left:3px solid #EF9F27">CBC w/diff · CMP · Lipid panel · HbA1c · Fasting insulin · <strong>IGF-1</strong> (peptide baseline) · <strong>hs-CRP</strong> (inflammaging) · <strong>Homocysteine</strong> (TMG removal check) · 25-OH Vitamin D · B6 (PLP) · Morning cortisol · Copper · Zinc · RBC Mg · Uric acid · GGT · Testosterone (total+free)</div></div>';
+  // Immune Rejuvenation Strategy
+  h+='<div class="ov-section"><h3>🛡️ Immune Rejuvenation Strategy — Bio Age ~60 → ~50 Target</h3>';
+  h+='<div style="font-size:8px;color:#888;margin-bottom:6px">Immune system is the OLDEST domain (bio age ~60 vs chrono 52). 9-layer strategy targeting genesis → rejuvenation → function → environment.</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">';
+  // Layer cards
+  [{icon:'🧬',layer:'Genesis',agent:'Thymosin α-1 1.6mg',what:'Stimulates NEW T-cell production from thymic remnants. Increases CD4+/CD8+ counts. Enhances dendritic cell maturation. Also acts as senolytic/senomodulator. Approved in 35+ countries. 60% mortality reduction in severe COVID-19 via T-cell restoration.',color:'#7B2D8B',bg:'#f5f3ff',brd:'#ede9fe',status:'ACTIVE — 1.6mg 2x/wk loading phase (Apr 2026)'},
+   {icon:'🍊',layer:'Function',agent:'Vitamin C 1000mg',what:'Maximizes neutrophil chemotaxis, phagocytosis, and microbial killing at ANC 1.1. Supports neutrophil apoptosis → macrophage clearance (inflammation resolution). Enhances lymphocyte proliferation + NK cell activity. Restores elderly immune function to near-young-adult levels at 500mg+. Acidifies urine (reduces Jardiance UTI risk).',color:'#D85A30',bg:'#FFF7ED',brd:'#FFEDD5',status:'NEW — add immediately'},
+   {icon:'🫐',layer:'Rejuvenation',agent:'Urolithin A →1000mg',what:'Nature Aging 2025: Expanded naive CD8+ T cells, reduced exhaustion markers, increased fatty acid oxidation in immune cells. Makes each immune cell metabolically younger via mitophagy. Most direct supplement for immune aging.',color:'#7F77DD',bg:'#f5f3ff',brd:'#ede9fe',status:'UPGRADE 700→1000mg after April labs'},
+   {icon:'🧹',layer:'Environment',agent:'Jardiance senolytic',what:'Clears senescent cells producing SASP that exhausts immune cells. Reduces inflammaging burden. AMPK→AICAR→immune-mediated clearance. At ~65% clearance — each cleared senescent cell frees immune resources.',color:'#1D9E75',bg:'#f0fdf4',brd:'#d1fae5',status:'ACTIVE — running since Jan 2026'},
+   {icon:'☀️',layer:'Modulation',agent:'Vitamin D (ADKE) + Zinc 20mg',what:'VDR on ALL immune cells — antimicrobial peptides, T-cell differentiation. Zinc = thymulin cofactor (thymus hormone) + neutrophil function. Both critical at WBC 2.9. April labs will verify levels.',color:'#378ADD',bg:'#eff6ff',brd:'#dbeafe',status:'ACTIVE — verify levels April labs'},
+   {icon:'🐟',layer:'Resolution',agent:'Omega-3 + NMN',what:'Omega-3 resolvins help RESOLVE inflammation — immune cells return to surveillance. NMN provides NAD+ energy for immune cell metabolism. SIRT1 supports T-cell function and macrophage polarization.',color:'#0F6E56',bg:'#f0fdf4',brd:'#d1fae5',status:'ACTIVE'}
+  ].forEach(l=>{
+    h+='<div style="background:'+l.bg+';border:1px solid '+l.brd+';border-radius:7px;padding:8px;border-top:2px solid '+l.color+'"><div style="font-size:14px">'+l.icon+'</div><div style="font-size:9px;font-weight:700;color:'+l.color+';margin:2px 0">'+l.layer+': '+l.agent+'</div><div style="font-size:7px;color:#555;line-height:1.4;margin-bottom:4px">'+l.what+'</div><div style="font-size:7px;font-weight:600;color:'+l.color+'">'+l.status+'</div></div>';
+  });
+  h+='</div></div>';
+  // 2025-2026 Research Updates
+  h+='<div class="ov-section"><h3>🔬 2025-2026 Research Updates — What Changed</h3>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:7px;margin-top:8px">';
+  // Upgraded compounds
+  [{c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Repatha',detail:'VESALIUS-CV (NEJM Nov 2025): -25% MACE in PRIMARY prevention. -31% in diabetes subgroup. -36% MI. First trial proving benefit WITHOUT prior MI/stroke — directly relevant to your profile.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Tadalafil 5mg',detail:'AJM Mar 2025: 50M patient TriNetX analysis. Significant reductions in all-cause mortality, MI, stroke, VTE, AND dementia vs no PDE5i. Tadalafil outperformed sildenafil. Now among top-validated longevity compounds.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Urolithin A',detail:'Nature Aging Nov 2025: RCT in 50 adults. 1000mg/day × 28 days expanded naive CD8+ T cells, reduced exhaustion markers, increased fatty acid oxidation in immune cells. DIRECTLY relevant to WBC 2.9 — consider 700→1000mg.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Jardiance',detail:'PMC 2024: First lifespan extension data — +5.9% median survival in aged mice. Downregulated P21/P16. npj Aging May 2025: Confirmed as senotherapeutic class via AMPK-dependent mitochondrial fission suppression.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Mounjaro',detail:'SURPASS-CVOT (NEJM Dec 2025): 13,299 patients, 4yr. CV benefit confirmed vs active comparator (dulaglutide). Expanded MACE HR 0.88. SURMOUNT-5 (NEJM 2025): head-to-head vs semaglutide — tirzepatide superior (-20.2% vs -13.7% weight, -18.4 vs -13.0 cm waist). Phase 2 aging trial (NCT07220473) now registered.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'⬆️',name:'Creatine + HMB',detail:'GeroScience Oct 2025: Combined CRE+HMB improved functional strength in RCT. ScienceDirect Sep 2025: Both explicitly recommended for GLP-1 users — 3g/day HMB + 5g/day creatine during weight loss.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'➡️',name:'Omega-3',detail:'2025 post-hoc: 1g/day slowed epigenetic aging markers over 3 years. Effect stronger when combined with vitamin D — your ADKE synergy confirmed. 42-study meta: dose-dependent CV mortality reduction.'},
+   {c:'#d97706',bg:'#fffbeb',brd:'#fef3c7',icon:'⚠️',name:'NMN',detail:'Meta-analysis 2025: NAD+ elevation confirmed but clinical outcomes (glucose, lipids) not significantly different from placebo. Feb 2026: 1200mg abolished exercise-induced mitochondrial biogenesis. Your 250mg likely fine — move to PM/evening dosing.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'🆕',name:'Vitamin C 1000mg',detail:'NEW ADDITION. 500mg/day restored elderly neutrophil + lymphocyte function to near-young-adult levels in RCT. At ANC 1.1, maximizes chemotaxis, phagocytosis, and microbial killing of each neutrophil. Also acidifies urine (Jardiance UTI protection) and regenerates vitamin E (ADKE synergy). ~$5/month.'},
+   {c:'#059669',bg:'#f0fdf4',brd:'#d1fae5',icon:'🆕',name:'Thymosin α-1',detail:'NOW ACTIVE. 1.6mg 2x/wk × 6mo loading → 1x/wk maintenance. 2025 review (IJMS): restores immune function by stimulating T-cell differentiation + thymic output. COVID-19 data: 60% mortality reduction via T-cell restoration. Also acts as senolytic/senomodulator. Approved 35+ countries.'},
+   {c:'#dc2626',bg:'#fef2f2',brd:'#fecaca',icon:'⬇️',name:'Taurine',detail:'Science Jun 2025 (NIA/de Cabo): Taurine levels INCREASED with age — NOT a reliable aging biomarker. Aging Cell 2025: No association with muscle, strength, or mitochondrial function. KEEP for sleep/GABA/cardio but REMOVE from longevity rationale.'}
+  ].forEach(u=>{
+    h+='<div style="background:'+u.bg+';border:1px solid '+u.brd+';border-radius:7px;padding:8px;border-left:3px solid '+u.c+'"><div style="font-size:9px;font-weight:700;color:'+u.c+';margin-bottom:3px">'+u.icon+' '+u.name+'</div><div style="font-size:8px;color:#555;line-height:1.5">'+u.detail+'</div></div>';
+  });
+  h+='</div></div>';
+  el.innerHTML=h;
+}
+
+function buildTransform(){
+  const el=document.getElementById('transformContent');
+  let h='<div class="tx-hero"><h2>The Bello Protocol Transformation</h2><p>What 48 drug mechanisms + 17 supplements + 2 peptides look and feel like — mapped from 2024 to 2031.</p><div class="tx-badges"><span class="tx-badge g">Bio Age ~40 vs Chrono 52</span><span class="tx-badge p">48 Mechanisms</span><span class="tx-badge c">0.77 yr/yr</span><span class="tx-badge" style="border-color:#0ea5e940;color:#0ea5e9;background:#f0f9ff">📍 '+NOW_DS+'</span></div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">Body Composition</div><div class="sil-row">';
+  h+='<div class="sil"><div class="sil-lbl">Pre-Protocol</div><div class="sil-ico">🧍</div><div class="sil-wt">~230+ lb</div><div class="sil-bf">~32% BF</div><div class="sil-detail">HbA1c 7.0 · FG 196<br>Visceral: VERY HIGH</div><span class="sil-tag r">T2DM</span></div>';
+  h+='<div class="sil now"><div class="sil-lbl" style="color:#0ea5e9">📍 Now</div><div class="sil-ico">🧍‍♂️</div><div class="sil-wt" style="color:#0ea5e9">211 lb</div><div class="sil-bf">27.2% BF</div><div class="sil-detail">HbA1c 5.4 · LDL 30<br>Visceral: 10.0 HIGH</div><span class="sil-tag a">Transforming</span></div>';
+  h+='<div class="sil target"><div class="sil-lbl" style="color:#16a34a">🎯 Sep 2026</div><div class="sil-ico">🏃‍♂️</div><div class="sil-wt" style="color:#16a34a">185-190</div><div class="sil-bf">18-20% BF</div><div class="sil-detail">Visceral: <8.0<br>WHR: ~0.85-0.88</div><span class="sil-tag g">Target</span></div>';
+  h+='<div class="sil"><div class="sil-lbl">2028+</div><div class="sil-ico">💪</div><div class="sil-wt">185-190</div><div class="sil-bf">16-18% BF</div><div class="sil-detail">Optimized<br>Bio age: ~35</div><span class="sil-tag g">Maintained</span></div>';
+  h+='</div></div>';
+  // Bio Age Trajectory Chart
+  h+='<div class="tx-section"><div class="tx-sh">Biological Age Trajectory — 2024 to 2031</div><div class="tx-ss">The widening gap: protocol (green) vs chronological (gray) vs no protocol (red). Blue marker = your position today ('+NOW_DS+').</div>';
+  h+='<div id="bioAgeChart" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px 12px 8px;margin:10px 0"></div></div>';
+  // Organ System Bio Age Bar Chart
+  h+='<div class="tx-section"><div class="tx-sh">Biological Age by Organ System</div><div class="tx-ss">As of '+NOW_DS+'. Chronological age 52 (dashed red line). Green = decades younger. Amber = work needed.</div>';
+  h+='<div id="organBarChart" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px 12px 8px;margin:10px 0"></div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">Visible Timeline</div><div class="tx-tl">';
+  [{d:'#0ea5e9',dt:'Now — Mar 2026',t:'Foundation Set',desc:'20+ lb down. Clothes looser. Jawline emerging. Energy higher. People notice something different.',tags:[{bg:'#ecfeff',c:'#0891b2',t:'Belly present'},{bg:'#ecfeff',c:'#0891b2',t:'Definition emerging'}]},
+   {d:'#3b82f6',dt:'Jun 2026 — ~195 lb',t:'Visible Shift',desc:'Belt -3 notches. Belly flatter. Shirts fit differently. Arms show definition. Unprompted comments.',tags:[{bg:'#eff6ff',c:'#2563eb',t:'Comments start'},{bg:'#eff6ff',c:'#2563eb',t:'Old clothes gone'}]},
+   {d:'#22c55e',dt:'Sep 2026 — 190 lb 🎯',t:'Transformation Point',desc:'Abdomen flat. V-taper. WHR <0.88. Muscle definition. Photos show different person. "10 years younger."',tags:[{bg:'#f0fdf4',c:'#16a34a',t:'Target hit'},{bg:'#f0fdf4',c:'#16a34a',t:'Different person'}]},
+   {d:'#8b5cf6',dt:'2027-28 — Compound',t:'Widening Gap',desc:'Younger at 55 than at 49. Senolytic steady state. Telomere elongation accumulating. Peer divergence striking.',tags:[{bg:'#f5f3ff',c:'#7c3aed',t:'Bio age ~35'},{bg:'#f5f3ff',c:'#7c3aed',t:'Peer divergence'}]},
+   {d:'#f59e0b',dt:'2029-31',t:'Different Generation',desc:'Bio age ~34 at chrono 58. Training, thinking at mid-30s level. Not "good for age" — different generation.',tags:[{bg:'#fffbeb',c:'#d97706',t:'24-year gap'}]}
+  ].forEach(i=>{h+='<div class="tx-tl-item"><div class="tx-tl-dot" style="background:'+i.d+'"></div><div class="tx-tl-date">'+i.dt+'</div><div class="tx-tl-title">'+i.t+'</div><div class="tx-tl-desc">'+i.desc+'</div><div class="tx-tl-tags">'+i.tags.map(t=>'<span class="tx-tl-tag" style="background:'+t.bg+';color:'+t.c+'">'+t.t+'</span>').join('')+'</div></div>';});
+  h+='</div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">Organ Bio Age</div><div class="organ-g">';
+  [{i:'❤️',n:'Cardiovascular',a:'~33',p:95,c:'#22c55e',b:'#22c55e',d:'CAC 0 · LDL 30 · RHR 72→65. Triple MACE.'},{i:'🫘',n:'Kidney',a:'~32',p:97,c:'#22c55e',b:'#0ea5e9',d:'eGFR 103. Dual protection.'},{i:'🧠',n:'Autonomic',a:'~35',p:88,c:'#22c55e',b:'#8b5cf6',d:'HRV 81ms. Neuroprotection stack.'},{i:'🫘',n:'Liver',a:'~36',p:90,c:'#22c55e',b:'#0ea5e9',d:'ALT 12 · AST 17. MASH resolving.'},{i:'🩸',n:'Metabolic',a:'~41',p:78,c:'#22c55e',b:'#22c55e',d:'HbA1c 5.4. T2DM reversed.'},{i:'📉',n:'Body Comp',a:'51→38',p:45,c:'#f59e0b',b:'#f59e0b',d:'27.2%→18-20%. Dropping fastest.'},{i:'🛡️',n:'Immune ⚠️',a:'~55→50',p:35,c:'#f59e0b',b:'#ef4444',d:'WBC 2.9. Tα1 ACTIVE (1.6mg 2x/wk loading) + Vitamin C (pending) + UA 1000mg (pending). Target: ~50.'}
+  ].forEach(o=>{h+='<div class="org" style="border-top-color:'+o.b+'"><div class="org-ico">'+o.i+'</div><div class="org-nm">'+o.n+'</div><div class="org-age">Bio '+o.a+'</div><div class="org-bar-bg"><div class="org-bar" style="width:'+o.p+'%;background:'+o.c+'"></div></div><div class="org-desc">'+o.d+'</div></div>';});
+  h+='</div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">Daily Experience</div><div class="feel-g">';
+  [{i:'⚡',n:'Sustained Energy',d:'No PM crash. Mitophagy 100%. Dual-fuel brain. Flat glucose.'},{i:'🧠',n:'Cognitive Clarity',d:'Faster recall. BHB + amyloid clearance + NAD+ + aniracetam.'},{i:'😴',n:'Deeper Sleep',d:'AHI declining. Less CPAP pressure. Taurine + Mg architecture.'},{i:'💪',n:'Training Capacity',d:'Progressive overload at 52. Clean mito. HMB + creatine preservation.'},{i:'🛡️',n:'Immune Resilience',d:'Tα1 generates new T-cells. Vitamin C maximizes neutrophil killing. UA rejuvenates existing cells. 9-layer immune architecture targeting bio age 60→50.'},{i:'🫁',n:'Effortless Movement',d:'No huffing. RHR 65. 40 lb lighter. Body stops being obstacle.'},{i:'❤️‍🔥',n:'Sexual Function',d:'Tadalafil + endothelial rejuvenation + testosterone. Late 30s level.'},{i:'🍽️',n:'Food Freedom',d:'Mounjaro eliminates compulsive eating. No cravings.'},{i:'🪞',n:'Mirror Confidence',d:'Body matches effort. Clothes fit. Posture upright.'}
+  ].forEach(f=>{h+='<div class="feel"><div class="feel-ico">'+f.i+'</div><div class="feel-nm">'+f.n+'</div><div class="feel-desc">'+f.d+'</div></div>';});
+  h+='</div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">You vs Peers at 55</div><div class="div-row"><div class="div-card you"><div class="div-lbl you">🟢 You</div><strong style="color:#059669;font-size:11px">Bio ~37 · 0.77 yr/yr</strong><br>Lean, defined. Flat abdomen. Sharp jawline. Mentally sharp. Training 4x/week. LDL 30, CAC 0. Immune system supported by Tα1 + Vitamin C + UA — recovering faster from illness, better vaccine response.</div><div class="div-card peer"><div class="div-lbl peer">🔴 Peer</div><strong style="color:#dc2626;font-size:11px">Bio ~57 · 1.0+ yr/yr</strong><br>20-40 lb extra. First statin. Pre-diabetic. Winded on stairs. Cognitive slowing. LDL 130+. Catching every cold. Flu knocks them out for weeks. Immune system declining unchecked.</div></div></div>';
+  h+='<div class="tx-section"><div class="tx-sh">What Won\'t Change</div><div class="hon-g">';
+  [{t:'Hair',d:'Follicle aging continues.'},{t:'Reading Vision',d:'Lens stiffening is mechanical.'},{t:'Joint Wear',d:'Structural damage won\'t rebuild.'},{t:'Thymic Involution',d:'Thymus largely fat by 52. Tα1 compensates but cannot rebuild the organ itself.'}
+  ].forEach(x=>{h+='<div class="hon"><strong>'+x.t+'</strong>'+x.d+'</div>';});
+  h+='</div></div>';
+  h+='<div style="text-align:center;padding:20px 10px"><div style="font-size:28px">🧬</div><div style="font-size:12px;font-weight:700;color:#0ea5e9">Not Immortality. Not Freezing Time.</div><div style="font-size:9px;color:#9ca3af;max-width:380px;margin:4px auto;line-height:1.6">A measurable divergence from the default aging trajectory that compounds year after year.</div></div>';
+  el.innerHTML=h;
+  // Render Bio Age Trajectory SVG
+  setTimeout(()=>{
+    const ch=document.getElementById('bioAgeChart');if(!ch)return;
+    const W=ch.clientWidth-24||560,H=220,pad={t:20,r:20,b:36,l:40};
+    const gW=W-pad.l-pad.r,gH=H-pad.t-pad.b;
+    const years=[2024,2025,2026,2027,2028,2029,2030,2031];
+    const you= [52,47,42,40,38,37,35,34];
+    const chrono=[52,53,54,55,56,57,58,59];
+    const none= [52,53,54,56,57,59,61,63];
+    const yMin=30,yMax=65;
+    function x(i){return pad.l+(i/(years.length-1))*gW;}
+    function y(v){return pad.t+((yMax-v)/(yMax-yMin))*gH;}
+    function line(data,color,width,dash){
+      let d='M';data.forEach((v,i)=>{d+=(i?'L':'')+x(i).toFixed(1)+','+y(v).toFixed(1);});
+      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="'+width+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+    }
+    function dots(data,color,r){
+      return data.map((v,i)=>'<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="'+r+'" fill="'+color+'"/>').join('');
+    }
+    function labels(data,color,offset){
+      return data.map((v,i)=>{
+        const yi=y(v)+offset;
+        return '<text x="'+x(i).toFixed(1)+'" y="'+yi.toFixed(1)+'" text-anchor="middle" font-size="8" font-weight="700" fill="'+color+'" font-family="-apple-system,sans-serif">'+v+'</text>';
+      }).join('');
+    }
+    let svg='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+    // Grid lines
+    for(let v=30;v<=65;v+=5){
+      const yy=y(v);
+      svg+='<line x1="'+pad.l+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pad.r)+'" y2="'+yy.toFixed(1)+'" stroke="#e5e7eb" stroke-width="0.5"/>';
+      svg+='<text x="'+(pad.l-6)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end" font-size="8" fill="#9ca3af" font-family="-apple-system,sans-serif">'+v+'</text>';
+    }
+    // X axis labels — highlight current year dynamically
+    const currentYear=_today.getFullYear();
+    years.forEach((yr,i)=>{
+      const xx=x(i);
+      svg+='<text x="'+xx.toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="8" fill="'+(yr===currentYear?'#0ea5e9':'#9ca3af')+'" font-weight="'+(yr===currentYear?'700':'400')+'" font-family="-apple-system,sans-serif">'+yr+'</text>';
+    });
+    // NOW marker — dynamic position based on actual date
+    const nowFrac=getNowFractionalYear();
+    const nowIdx=(nowFrac-years[0])/(years[years.length-1]-years[0])*(years.length-1);
+    const nowX=x(Math.max(0,Math.min(years.length-1,nowIdx)));
+    // Interpolate bio age at current position
+    const floorI=Math.floor(nowIdx),ceilI=Math.min(floorI+1,you.length-1);
+    const frac=nowIdx-floorI;
+    const nowBioAge=Math.round(you[floorI]+(you[ceilI]-you[floorI])*frac);
+    svg+='<line x1="'+nowX.toFixed(1)+'" y1="'+pad.t+'" x2="'+nowX.toFixed(1)+'" y2="'+(H-pad.b)+'" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>';
+    svg+='<rect x="'+(nowX-40).toFixed(1)+'" y="'+(pad.t-14)+'" width="80" height="13" rx="3" fill="#0ea5e9" opacity="0.9"/>';
+    svg+='<text x="'+nowX.toFixed(1)+'" y="'+(pad.t-5)+'" text-anchor="middle" font-size="7" font-weight="700" fill="#fff" font-family="-apple-system,sans-serif">📍 NOW: Bio ~'+nowBioAge+' ('+NOW_DS+')</text>';
+    // Dot on the "you" line at current position
+    const nowYouY=y(nowBioAge);
+    svg+='<circle cx="'+nowX.toFixed(1)+'" cy="'+nowYouY.toFixed(1)+'" r="5" fill="#0ea5e9" stroke="#fff" stroke-width="1.5"/>';
+    // Shaded area between you and none (divergence)
+    let areaD='M';you.forEach((v,i)=>{areaD+=(i?'L':'')+x(i).toFixed(1)+','+y(v).toFixed(1);});
+    for(let i=none.length-1;i>=0;i--){areaD+='L'+x(i).toFixed(1)+','+y(none[i]).toFixed(1);}
+    areaD+='Z';
+    svg+='<path d="'+areaD+'" fill="url(#gapGrad)" opacity="0.15"/>';
+    svg+='<defs><linearGradient id="gapGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>';
+    // Lines
+    svg+=line(none,'#f87171',1.5,'4,3');
+    svg+=line(chrono,'#94a3b8',1.5,'2,2');
+    svg+=line(you,'#34d399',2.5,'');
+    // Dots
+    svg+=dots(you,'#34d399',3.5);
+    svg+=dots(chrono,'#94a3b8',2);
+    svg+=dots(none,'#f87171',2);
+    // Value labels
+    svg+=labels(you,'#059669',-8);
+    svg+=labels(none,'#dc2626',14);
+    // Gap annotation at 2031
+    const gapY1=y(34),gapY2=y(63),gapMid=(gapY1+gapY2)/2;
+    const gapX=x(7)+14;
+    svg+='<line x1="'+gapX+'" y1="'+gapY1.toFixed(1)+'" x2="'+gapX+'" y2="'+gapY2.toFixed(1)+'" stroke="#f59e0b" stroke-width="1.5"/>';
+    svg+='<text x="'+(gapX+2)+'" y="'+gapMid.toFixed(1)+'" font-size="8" font-weight="700" fill="#f59e0b" font-family="-apple-system,sans-serif" dominant-baseline="middle"> 29yr gap</text>';
+    // Legend
+    const lx=pad.l+10,ly=pad.t+8;
+    svg+='<rect x="'+lx+'" y="'+ly+'" width="8" height="3" rx="1" fill="#34d399"/><text x="'+(lx+12)+'" y="'+(ly+3)+'" font-size="7" fill="#059669" font-family="-apple-system,sans-serif">You (with protocol)</text>';
+    svg+='<rect x="'+lx+'" y="'+(ly+10)+'" width="8" height="3" rx="1" fill="#94a3b8"/><text x="'+(lx+12)+'" y="'+(ly+13)+'" font-size="7" fill="#64748b" font-family="-apple-system,sans-serif">Chronological age</text>';
+    svg+='<rect x="'+lx+'" y="'+(ly+20)+'" width="8" height="3" rx="1" fill="#f87171"/><text x="'+(lx+12)+'" y="'+(ly+23)+'" font-size="7" fill="#dc2626" font-family="-apple-system,sans-serif">Without protocol</text>';
+    svg+='</svg>';
+    ch.innerHTML=svg;
+  },100);
+  // Render Organ System Bio Age Bar Chart
+  setTimeout(()=>{
+    const oc=document.getElementById('organBarChart');if(!oc)return;
+    const W=oc.clientWidth-24||560,H=240,pad={t:16,r:16,b:66,l:44};
+    const gW=W-pad.l-pad.r,gH=H-pad.t-pad.b;
+    const organs=[
+      {name:'Cardio-\nvascular',age:33,color:'#22c55e',icon:'❤️'},
+      {name:'Kidney',age:32,color:'#22c55e',icon:'🫘'},
+      {name:'Autonomic\n/ HRV',age:35,color:'#22c55e',icon:'🧠'},
+      {name:'Liver',age:36,color:'#22c55e',icon:'🫘'},
+      {name:'Metabolic',age:41,color:'#22c55e',icon:'🩸'},
+      {name:'Endocrine',age:41,color:'#22c55e',icon:'🧬'},
+      {name:'Hemato-\nlogical',age:43,color:'#60a5fa',icon:'🔬'},
+      {name:'Body\nComp',age:51,color:'#f59e0b',icon:'📉'},
+      {name:'Immune\n⚠️→🟡',age:53,color:'#f59e0b',icon:'🛡️'}
+    ];
+    const yMin=25,yMax=65,chronoAge=52;
+    const barW=Math.min(40,gW/organs.length*0.6);
+    const gap=(gW-barW*organs.length)/(organs.length+1);
+    function yPos(v){return pad.t+((yMax-v)/(yMax-yMin))*gH;}
+    let s='<svg width="'+W+'" height="'+(H+14)+'" xmlns="http://www.w3.org/2000/svg">';
+    // Y-axis grid lines
+    for(let v=25;v<=65;v+=5){
+      const yy=yPos(v);
+      s+='<line x1="'+pad.l+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pad.r)+'" y2="'+yy.toFixed(1)+'" stroke="#e5e7eb" stroke-width="0.5"/>';
+      s+='<text x="'+(pad.l-5)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end" font-size="8" fill="#9ca3af" font-family="-apple-system,sans-serif">'+v+'</text>';
+    }
+    // Chronological age reference line
+    const chronoY=yPos(chronoAge);
+    s+='<line x1="'+pad.l+'" y1="'+chronoY.toFixed(1)+'" x2="'+(W-pad.r)+'" y2="'+chronoY.toFixed(1)+'" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6,3"/>';
+    s+='<text x="'+(W-pad.r+2)+'" y="'+(chronoY+3).toFixed(1)+'" font-size="7" font-weight="700" fill="#ef4444" font-family="-apple-system,sans-serif">Chrono 52</text>';
+    // Bars
+    organs.forEach((o,i)=>{
+      const bx=pad.l+gap+(barW+gap)*i;
+      const by=yPos(o.age);
+      const bh=yPos(yMin)-by;
+      // Bar gradient
+      s+='<defs><linearGradient id="bg'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+o.color+'" stop-opacity="0.9"/><stop offset="100%" stop-color="'+o.color+'" stop-opacity="0.5"/></linearGradient></defs>';
+      s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+barW+'" height="'+bh.toFixed(1)+'" rx="3" fill="url(#bg'+i+')"/>';
+      // Value on top of bar
+      s+='<text x="'+(bx+barW/2).toFixed(1)+'" y="'+(by-5).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="700" fill="'+o.color+'" font-family="-apple-system,sans-serif">'+o.age+'</text>';
+      // Gap indicator
+      const gapVal=chronoAge-o.age;
+      if(gapVal>0){
+        s+='<text x="'+(bx+barW/2).toFixed(1)+'" y="'+(by-15).toFixed(1)+'" text-anchor="middle" font-size="7" font-weight="600" fill="#059669" font-family="-apple-system,sans-serif">-'+gapVal+'yr</text>';
+      } else if(gapVal<0){
+        s+='<text x="'+(bx+barW/2).toFixed(1)+'" y="'+(by-15).toFixed(1)+'" text-anchor="middle" font-size="7" font-weight="600" fill="#dc2626" font-family="-apple-system,sans-serif">+'+Math.abs(gapVal)+'yr</text>';
+      }
+      // X-axis label (multi-line)
+      const lines=o.name.split('\n');
+      const labelY=yPos(yMin)+12;
+      // Icon above label
+      s+='<text x="'+(bx+barW/2).toFixed(1)+'" y="'+(labelY-2).toFixed(1)+'" text-anchor="middle" font-size="12">'+o.icon+'</text>';
+      lines.forEach((ln,li)=>{
+        s+='<text x="'+(bx+barW/2).toFixed(1)+'" y="'+(labelY+10+li*10).toFixed(1)+'" text-anchor="middle" font-size="7" fill="'+(o.age>chronoAge?'#dc2626':'#6b7280')+'" font-weight="'+(o.age>chronoAge?'700':'500')+'" font-family="-apple-system,sans-serif">'+ln+'</text>';
+      });
+    });
+    // Composite bio age annotation with live date
+    s+='<rect x="'+pad.l+'" y="'+(H)+'" width="'+gW+'" height="14" rx="4" fill="#f0fdf4" stroke="#d1fae5" stroke-width="0.5"/>';
+    s+='<text x="'+(pad.l+gW/2)+'" y="'+(H+9)+'" text-anchor="middle" font-size="8" font-weight="600" fill="#059669" font-family="-apple-system,sans-serif">📍 '+NOW_DS+'  |  Composite Bio Age: ~40  |  Chrono: 52  |  Gap: -12yr  |  Rate: 0.77 yr/yr  |  Tα1 active</text>';
+    s+='</svg>';
+    oc.innerHTML=s;
+  },200);
+}
+
+// Timeline engine
+function buildAxis(d){const ax=document.getElementById('timeAxis');ax.innerHTML='';ax.style.position='relative';ax.style.height='42px';const nowW=getDrugNowW(d);const ticks=[{w:0,rel:'Start'},{w:4,rel:'Mo 1'},{w:13,rel:'Mo 3'},{w:26,rel:'Mo 6'},{w:52,rel:'Yr 1'},{w:78,rel:'Mo 18'},{w:104,rel:'Yr 2'}];if(d.totalW>=130)ticks.push({w:130,rel:'Yr 2.5'});let dt=ticks.map(t=>{const dd=w2d(d.start,t.w);const isN=Math.abs(t.w-nowW)<3;return{w:t.w,label:(t.w===0?_M[d.start.getMonth()]+'\n'+d.start.getFullYear():_M[dd.getMonth()]+' '+dd.getFullYear()+'\n'+t.rel),isNow:isN};});const nf=dt.some(t=>t.isNow);if(!nf&&nowW>0&&nowW<=d.totalW){const nd=w2d(d.start,nowW);dt.push({w:nowW,label:_M[nd.getMonth()]+' '+nd.getFullYear()+'\n(NOW)',isNow:true});dt.sort((a,b)=>a.w-b.w);}dt.forEach(t=>{const el=document.createElement('div');el.className='time-tick';el.style.left=wPct(d,t.w)+'%';const ps=t.label.split('\n');if(t.isNow){el.innerHTML='<span style="display:block;font-weight:800;color:#fff;font-size:8px;background:'+d.color+';padding:1px 6px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.2)">📍 '+ps[0]+'</span><span style="display:block;font-size:7px;font-weight:700;color:'+d.color+'">TODAY — Wk '+nowW+'</span>';}else{el.innerHTML='<span style="display:block;font-weight:500;color:#888;font-size:8px">'+ps[0]+'</span><span style="display:block;font-size:7px;color:#bbb">'+ps[1]+'</span>';}ax.appendChild(el);});}
+function buildRows(d){const c=document.getElementById('beneRows');c.innerHTML='';const nowW=getDrugNowW(d);let _rowIdx=0;sortedB(d).forEach(b=>{const row=document.createElement('div');row.className='bene-row'+(selectedId===b.id?' selected':'');row.onclick=()=>selectB(d,b.id);const label=document.createElement('div');label.className='bene-label';const track=document.createElement('div');track.className='bar-track';const os=document.createElement('div');os.className='seg';os.style.left=wPct(d,b.onset)+'%';os.style.width=wPct(d,Math.max(0,b.rampEnd-b.onset))+'%';os.style.background='#D3D1C7';os.style.opacity='0.6';track.appendChild(os);const dot=document.createElement('div');dot.className='onset-dot';dot.style.left='calc('+wPct(d,b.onset)+'% - 3px)';dot.style.background=d.color;track.appendChild(dot);const ap=document.createElement('div');ap.className='pin-active';ap.style.background=d.sel;ap.style.color=d.color;ap.style.border='1px solid '+d.accent;ap.style.left=wPct(d,b.onset)+'%';ap.textContent=(b.onset<=nowW?'⚡':'○')+' '+pD(d.start,b.onset);track.appendChild(ap);if(showStack){const ss=document.createElement('div');ss.className='seg';ss.style.left=wPct(d,b.rampEnd)+'%';ss.style.width=wPct(d,Math.max(0,b.optimal_stack-b.rampEnd))+'%';ss.style.background='linear-gradient(to right,'+b.color+'60,'+b.color+')';track.appendChild(ss);const ir=b.optimal_stack<=nowW;const dc=ir?b.color:'#E24B4A';const od=document.createElement('div');od.style.cssText='left:calc('+wPct(d,b.optimal_stack)+'% - 4px);background:'+dc+';box-shadow:0 0 0 2px '+b.color+'40;width:8px;height:8px;border-radius:50%;border:1.5px solid #fff;position:absolute;top:50%;transform:translateY(-50%);z-index:3';track.appendChild(od);const sp=document.createElement('div');sp.className='pin-stack';sp.style.left=wPct(d,b.optimal_stack)+'%';sp.style.background=dc+'18';sp.style.color=dc;sp.style.border='1px solid '+dc+'50';sp.textContent=(ir?'✅ ':'🎯 ')+pD(d.start,b.optimal_stack);track.appendChild(sp);}if(showSolo&&b.accel_weeks>0){const sd=document.createElement('div');sd.style.cssText='position:absolute;top:50%;transform:translateY(-50%);left:calc('+wPct(d,b.optimal_solo)+'% - 3px);background:#B4B2A9;width:6px;height:6px;border-radius:50%';track.appendChild(sd);const slp=document.createElement('div');slp.className='pin-solo';slp.style.left=wPct(d,b.optimal_solo)+'%';slp.textContent='⬜ '+pD(d.start,b.optimal_solo);track.appendChild(slp);}let pct=0,pL='',pC=d.color;if(nowW<b.onset){pct=0;pL='—';pC='#B4B2A9';}else if(nowW>=b.optimal_stack){pct=100;pL='100%';pC=b.color;}else{const r=b.optimal_stack-b.onset;pct=Math.round(((nowW-b.onset)/r)*100);pL=pct+'%';pC=pct>=70?b.color:pct>=30?'#EF9F27':'#E24B4A';}if(pct>0){const f=document.createElement('div');f.className='progress-fill';f.style.left=wPct(d,b.onset)+'%';f.style.width=Math.max(0,wPct(d,Math.min(nowW,b.optimal_stack)-b.onset))+'%';f.style.background=pC+'30';f.style.border='1px solid '+pC+'40';track.appendChild(f);}const nl=document.createElement('div');nl.className='now-overlay';nl.style.left=wPct(d,nowW)+'%';nl.style.background=d.color;nl.style.boxShadow='0 0 4px '+d.color+'60';track.appendChild(nl);if(_rowIdx===0||_rowIdx%5===0){const ndl=document.createElement('div');ndl.className='now-date-label';ndl.style.left=wPct(d,nowW)+'%';ndl.style.background=d.color+'20';ndl.style.color=d.color;ndl.style.border='1px solid '+d.color+'40';ndl.textContent='📍 '+NOW_DS;track.appendChild(ndl);}_rowIdx++;const pb=document.createElement('div');pb.className='pct-badge';pb.style.left=wPct(d,nowW)+'%';pb.style.background=pC;pb.textContent=pL;track.appendChild(pb);const tBg=pct===100?b.color:pct>=70?b.color+'30':pct>=30?d.sel:'#f0f0ee';const tC=pct===100?'#fff':pct>=70?b.color:pct>=30?d.color:'#999';const tT=pct===100?'✅ 100%':pct>0?pL:'—';label.innerHTML='<div style="display:flex;align-items:center;justify-content:flex-end;gap:3px"><span style="font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;background:'+tBg+';color:'+tC+'">'+tT+'</span></div><div style="margin-top:1px">'+b.icon+' '+b.title+'</div><span class="cat">'+b.cat+'</span>';row.appendChild(label);row.appendChild(track);c.appendChild(row);});}
+function selectB(d,id){selectedId=id;buildRows(d);const b=d.benefits.find(x=>x.id===id);if(!b)return;const nowW=getDrugNowW(d);const p=document.getElementById('detailPanel');p.style.borderColor=b.color;document.getElementById('dpTitle').textContent=b.icon+' '+b.title;document.getElementById('dpTitle').style.color=b.color;const ex=p.querySelector('.dp-grid');if(ex)ex.remove();let pct;if(nowW<b.onset)pct=0;else if(nowW>=b.optimal_stack)pct=100;else pct=Math.round(((nowW-b.onset)/(b.optimal_stack-b.onset))*100);const g=document.createElement('div');g.className='dp-grid';g.innerHTML='<div class="dp-cell" style="border-color:'+d.color+'40"><div class="dp-cell-label" style="color:'+d.color+'">⚡ Active</div><div class="dp-cell-val" style="color:'+d.color+';font-size:11px">'+fTS(d.start,b.onset)+'</div></div><div class="dp-cell"><div class="dp-cell-label">⬜ Alone</div><div class="dp-cell-val" style="color:#888;font-size:11px">'+fTS(d.start,b.optimal_solo)+'</div></div><div class="dp-cell" style="border-color:'+b.color+'40"><div class="dp-cell-label" style="color:'+b.color+'">🎯 Stack</div><div class="dp-cell-val" style="color:'+b.color+';font-size:11px">'+fTS(d.start,b.optimal_stack)+'</div><div class="dp-cell-sub">'+(b.accel_weeks>0?'⚡ '+Math.round(b.accel_weeks/4.33)+'mo faster':'—')+'</div></div>';document.getElementById('dpText').before(g);document.getElementById('dpText').textContent=b.detail;const sr=document.getElementById('dpStack');sr.innerHTML='';const cols={3:d.color,2:d.accent,1:'#ccc'};b.accelerators.forEach(a=>{const col=cols[a.strength]||'#aaa';const pill=document.createElement('span');pill.className='dp-pill';pill.style.background=col+'25';pill.style.color=col;pill.style.border='1px solid '+col+'50';pill.title=a.note;pill.textContent=a.name+(a.strength===3?' ★':' ◆');sr.appendChild(pill);});}
+
+function switchTab(tab){
+  document.querySelectorAll('.drug-tab').forEach(t=>{t.classList.remove('active');t.style.background='#fff';t.style.color='#666';t.style.borderColor='#ddd';});
+  const tEl=document.getElementById('tab-'+tab);
+  document.getElementById('overviewContent').style.display='none';
+  document.getElementById('transformContent').style.display='none';
+  document.getElementById('drugContent').style.display='none';
+  if(tab==='overview'){tEl.classList.add('active');tEl.style.background='#1a1a1a';tEl.style.color='#fff';tEl.style.borderColor='#1a1a1a';document.getElementById('overviewContent').style.display='block';buildOverview();}
+  else if(tab==='transform'){tEl.classList.add('active');tEl.style.background='#0ea5e9';tEl.style.color='#fff';tEl.style.borderColor='#0ea5e9';document.getElementById('transformContent').style.display='block';buildTransform();}
+  else{const d=DRUGS[tab];tEl.classList.add('active');tEl.style.background=d.color;tEl.style.color='#fff';tEl.style.borderColor=d.color;document.getElementById('drugContent').style.display='block';currentDrug=d;selectedId=null;const nowW=getDrugNowW(d);document.getElementById('nowRow').innerHTML='<span class="now-badge" style="background:'+d.sel+';color:'+d.color+';font-weight:700">📍 TODAY: '+NOW_DS+' (Month '+Math.round(nowW/4.33)+', Week '+nowW+')</span><span class="now-badge" style="background:#f0f0ee;color:#666;font-size:8px">'+d.name+' · '+d.sub+' · '+d.role+'</span>';buildAxis(d);buildRows(d);setTimeout(()=>selectB(d,d.benefits[0].id),50);}
+}
+function toggleLayer(l){if(l==='stack'){showStack=!showStack;document.getElementById('btn-stack').classList.toggle('on',showStack);}else{showSolo=!showSolo;document.getElementById('btn-solo').classList.toggle('on',showSolo);}if(currentDrug)buildRows(currentDrug);}
+function sortBy(m){sortMode=m;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));document.getElementById('sort-'+m).classList.add('active');if(currentDrug)buildRows(currentDrug);}
+
+document.getElementById('bottomNote').innerHTML='Bello Protocol Master Dashboard. '+NOW_DS+'. Mounjaro (13) + Jardiance (15) + Repatha (11) + Tα1 (9) = 48 mechanisms. 7 Rx + 2 Peptides + 17 Supplements. Bio age ~40 vs Chrono 52.';
+switchTab('overview');
+</script>
+</body>
+</html>
