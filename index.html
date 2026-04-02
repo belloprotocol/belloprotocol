@@ -249,7 +249,7 @@ html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
   <h1>Bello Protocol — Master Dashboard</h1>
   <p id="masterSub">7 Rx + 2 Peptides + 17 Supplements — All mechanisms, labs, research updates (2025-2026), and transformation trajectory</p>
 </div>
-<div class="now-banner" id="liveDateBanner"><span class="dot"></span><span class="date" id="liveDateText"></span><span class="time" id="liveTimeText"></span></div>
+<div class="now-banner" id="liveDateBanner"><span class="dot"></span><span class="date" id="liveDateText"></span><span class="time" id="liveTimeText"></span><span id="ouraStatus" style="font-size:8px;font-weight:600;padding:2px 8px;border-radius:5px;background:#f0f0ee"></span></div>
 <div class="drug-tabs">
   <div class="drug-tab" id="tab-overview" onclick="switchTab('overview')" style="border-color:#1a1a1a">📊 Overview<span class="sub">Stack + Labs + Compounds</span></div>
   <div class="drug-tab" id="tab-transform" onclick="switchTab('transform')" style="border-color:#0ea5e9">🦋 Transformation<span class="sub">Visual trajectory</span></div>
@@ -258,6 +258,7 @@ html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
   <div class="drug-tab" id="tab-repatha" onclick="switchTab('repatha')">🛡️ Repatha<span class="sub">evolocumab · CV fortress</span></div>
   <div class="drug-tab" id="tab-ta1" onclick="switchTab('ta1')">⚔️ Tα1<span class="sub">thymosin α-1 · immune</span></div>
   <div class="drug-tab" id="tab-health" onclick="switchTab('health')" style="border-color:#ef4444">❤️‍🔥 Health<span class="sub">Apple Health · live</span></div>
+  <div class="drug-tab" id="tab-training" onclick="switchTab('training')" style="border-color:#16a34a">🏋️ Training<span class="sub">Readiness · reload</span></div>
 </div>
 <div id="overviewContent"></div>
 <div id="transformContent" style="display:none"></div>
@@ -276,12 +277,98 @@ html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
     </div>
   </div>
   <div class="now-row" id="nowRow"></div>
+  <div id="ta1Status" style="display:none"></div>
   <div class="chart-area"><div class="timeline-wrap"><div class="time-axis" id="timeAxis"></div><div id="beneRows"></div></div></div>
   <div class="detail-panel" id="detailPanel"><div class="dp-title" id="dpTitle">Click any row</div><div class="dp-text" id="dpText"></div><div class="dp-stack-row" id="dpStack"></div></div>
 </div>
 <div id="healthContent" style="display:none"></div>
+<div id="trainingContent" style="display:none"></div>
 <p class="note" id="bottomNote"></p>
 <script>
+// ===== OURA RING LIVE INTEGRATION =====
+// Set your Cloudflare Worker URL here (see SETUP_GUIDE.md)
+const OURA_WORKER_URL = ''; // e.g. 'https://bello-oura-proxy.yourname.workers.dev'
+
+let _ouraLoading = false;
+function fetchOuraData(callback) {
+  if (!OURA_WORKER_URL) {
+    console.log('No OURA_WORKER_URL configured — using static HEALTH_DATA');
+    if (callback) callback(false);
+    return;
+  }
+  if (_ouraLoading) return;
+  _ouraLoading = true;
+  const indicator = document.getElementById('ouraStatus');
+  if (indicator) { indicator.textContent = '🔄 Pulling live data...'; indicator.style.color = '#d97706'; }
+
+  fetch(OURA_WORKER_URL)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        console.error('Oura API error:', data.error);
+        if (indicator) { indicator.textContent = '❌ ' + data.error; indicator.style.color = '#dc2626'; }
+        _ouraLoading = false;
+        if (callback) callback(false);
+        return;
+      }
+      // Update HEALTH_DATA with live Oura data
+      HEALTH_DATA.synced = data.synced;
+      if (data.sleep && data.sleep.lastNight) {
+        HEALTH_DATA.sleep.lastNight.deep = data.sleep.lastNight.deep;
+        HEALTH_DATA.sleep.lastNight.rem = data.sleep.lastNight.rem;
+        HEALTH_DATA.sleep.lastNight.core = data.sleep.lastNight.core;
+        HEALTH_DATA.sleep.lastNight.awake = data.sleep.lastNight.awake;
+        HEALTH_DATA.sleep.lastNight.bedtime = data.sleep.lastNight.bedtime;
+        HEALTH_DATA.sleep.lastNight.wake = data.sleep.lastNight.wake;
+      }
+      if (data.rhr) {
+        HEALTH_DATA.rhr.avg = data.rhr.avg || HEALTH_DATA.rhr.avg;
+      }
+      if (data.hrv) {
+        HEALTH_DATA.hrv.avg = data.hrv.avg || HEALTH_DATA.hrv.avg;
+      }
+      if (data.activity) {
+        HEALTH_DATA.steps.avg = data.activity.stepsAvg7d || HEALTH_DATA.steps.avg;
+      }
+      if (data.readiness && data.readiness.temperature !== undefined) {
+        // Temperature deviation available
+      }
+      if (data.training) {
+        HEALTH_DATA.training.today.score = data.training.score;
+        HEALTH_DATA.training.today.level = data.training.level;
+        HEALTH_DATA.training.today.color = data.training.color;
+        HEALTH_DATA.training.today.rec = data.training.rec;
+        if (data.training.components) {
+          HEALTH_DATA.training.components = data.training.components;
+        }
+      }
+      if (data.readiness && data.readiness.scores7d) {
+        HEALTH_DATA.training.sevenDay.readiness = data.readiness.scores7d;
+        HEALTH_DATA.training.sevenDay.labels = data.readiness.labels7d.map(function(l) { return 'Mar ' + l.split('-')[1]; });
+      }
+
+      if (indicator) {
+        indicator.textContent = '✅ Live — ' + data.synced;
+        indicator.style.color = '#059669';
+      }
+      _ouraLoading = false;
+      // Re-render active tab
+      var activeTab = document.querySelector('.drug-tab.active');
+      if (activeTab) {
+        var tabId = activeTab.id.replace('tab-', '');
+        if (tabId === 'health') buildHealth();
+        else if (tabId === 'training') buildTraining();
+      }
+      if (callback) callback(true);
+    })
+    .catch(function(err) {
+      console.error('Oura fetch failed:', err);
+      if (indicator) { indicator.textContent = '⚠️ Offline — using cached data'; indicator.style.color = '#d97706'; }
+      _ouraLoading = false;
+      if (callback) callback(false);
+    });
+}
+
 const _M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const _today=new Date();const NOW_DS=_M[_today.getMonth()]+' '+_today.getDate()+', '+_today.getFullYear();
 const _msW=7*24*60*60*1000;
@@ -351,7 +438,7 @@ benefits:[
 {id:'cancer_r',icon:'🔬',cat:'Longevity',color:'#7B2D8B',title:'Cancer microenvironment',onset:8,rampEnd:26,optimal_solo:78,optimal_stack:52,accel_weeks:26,ceiling_boost:15,detail:'OxLDL promotes tumor microenvironment. LDL 30 minimizes. Layer on top of Mounjaro + Jardiance cancer mechanisms.',accelerators:[{name:'Mounjaro',strength:3,note:'JAMA Oncology primary'},{name:'Jardiance',strength:3,note:'Warburg + senolytic'}]},
 {id:'mortality',icon:'⏳',cat:'Longevity',color:'#0F6E56',title:'All-cause mortality reduction',onset:13,rampEnd:52,optimal_solo:130,optimal_stack:104,accel_weeks:26,ceiling_boost:25,detail:'CVD = #1 killer. FOURIER + VESALIUS-CV now cover BOTH secondary AND primary prevention. Tadalafil AJM 2025 (50M pts): independent mortality reduction + dementia prevention. Jardiance lifespan +5.9% in aged mice. Tα1 addresses immune vulnerability (WBC 2.9) that could otherwise become mortality risk.',accelerators:[{name:'Jardiance',strength:3,note:'EMPA-REG -38% + lifespan +5.9%'},{name:'Mounjaro',strength:3,note:'SURPASS-CVOT metabolic'},{name:'Tadalafil',strength:2,note:'AJM 2025: mortality + dementia'},{name:'Thymosin α-1',strength:1,note:'Immune resilience at WBC 2.9'}]}
 ]},
-ta1:{start:new Date('2026-04-01'),totalW:78,color:'#0891B2',accent:'#22D3EE',name:'Thymosin α-1',sub:'1.6mg SC 2x/wk → 1x/wk',role:'Immune Architect',sel:'#ECFEFF',
+ta1:{start:new Date('2026-03-31'),totalW:78,color:'#0891B2',accent:'#22D3EE',name:'Thymosin α-1',sub:'1.6mg SC 2x/wk → 1x/wk',role:'Immune Architect',sel:'#ECFEFF',
 benefits:[
 {id:'tcell',icon:'🧬',cat:'Immune Genesis',color:'#0891B2',title:'T-cell maturation (CD4+/CD8+)',onset:2,rampEnd:8,optimal_solo:26,optimal_stack:18,accel_weeks:8,ceiling_boost:30,detail:'Primary mechanism. Tα1 binds TLR2/TLR9 on thymic dendritic cells → stimulates T-cell differentiation from progenitors. Increases CD4+ helper and CD8+ cytotoxic T-cell counts. At WBC 2.9, every new T-cell produced is high-value. Zinc provides thymulin cofactor (the thymus hormone that Tα1 mimics). Vitamin D activates VDR on maturing T-cells for proper differentiation. NMN provides NAD+ energy for the explosive proliferation during thymic education.',accelerators:[{name:'Zinc 20mg',strength:3,note:'Thymulin cofactor — the thymus hormone Tα1 mimics'},{name:'Vitamin D3',strength:3,note:'VDR on T-cell precursors → proper differentiation'},{name:'NMN',strength:2,note:'NAD+ for T-cell proliferative burst'},{name:'P5P (B6)',strength:2,note:'Lymphocyte proliferation cofactor'},{name:'Taurine',strength:1,note:'Protects maturing T-cells from oxidative damage'}]},
 {id:'nk',icon:'🗡️',cat:'Immune Genesis',color:'#E24B4A',title:'NK cell activation',onset:2,rampEnd:6,optimal_solo:13,optimal_stack:10,accel_weeks:3,ceiling_boost:20,detail:'Tα1 increases NK cell cytotoxicity — your cancer surveillance system. NK cells kill virally infected cells and emerging tumor cells without prior antigen exposure. Fastest immune mechanism to respond. Jardiance granzyme B upregulation arms the NK cells Tα1 activates. Urolithin A (Nature Aging 2025) rejuvenates existing NK cell mitochondria so they have energy to kill. Sleep is the strongest behavioral NK amplifier — your 84-min deep sleep nights are when NK activity peaks.',accelerators:[{name:'Jardiance',strength:3,note:'Zhang 2025: granzyme B upregulation in cytotoxic cells'},{name:'Urolithin A',strength:3,note:'Nature Aging 2025: immune cell mitochondrial rejuvenation'},{name:'Vitamin D3',strength:2,note:'NK cell cytotoxicity activation via VDR'},{name:'Zinc',strength:1,note:'NK cell development and function'}]},
@@ -397,12 +484,50 @@ const HEALTH_DATA={
   }
 };
 
+function showRefreshInstructions(){
+  // If Oura Worker is configured, fetch live data directly
+  if (OURA_WORKER_URL) {
+    fetchOuraData(function(success) {
+      if (!success) {
+        showRefreshModal(); // Fall back to manual if fetch fails
+      }
+    });
+    return;
+  }
+  showRefreshModal();
+}
+function showRefreshModal(){
+  const prompt='Pull fresh health data from Apple Health and update my Bello Protocol master dashboard with current sleep, HRV, RHR, steps, SpO2, weight, glucose, and training readiness score.';
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  d.onclick=function(e){if(e.target===d)d.remove();};
+  const box=document.createElement('div');
+  box.style.cssText='background:#fff;border-radius:12px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,0.2)';
+  box.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:32px">🔄</div><div style="font-size:14px;font-weight:700;color:#ef4444;margin-top:4px">Refresh Health Data</div></div>'
+    +'<a href="https://claude.ai/new?q='+encodeURIComponent(prompt)+'" target="_blank" style="display:block;background:#ef4444;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;margin-bottom:10px;min-height:44px;line-height:1.4">🚀 Open Claude with prompt ready</a>'
+    +'<div style="font-size:8px;color:#999;text-align:center;margin-bottom:10px">Opens Claude app (iOS) or claude.ai with your refresh request pre-loaded</div>'
+    +'<div style="background:#f7f7f5;border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:9px;font-weight:600;color:#555;margin-bottom:6px">Or copy and paste manually:</div>'
+    +'<div id="copyPrompt" style="background:#fff;border:2px solid #ddd;border-radius:6px;padding:8px;font-size:11px;font-weight:500;color:#1a1a1a;text-align:center;cursor:pointer;line-height:1.4">'+prompt+'</div>'
+    +'<div style="font-size:8px;color:#999;margin-top:4px;text-align:center">Tap to copy</div></div>'
+    +'<div style="font-size:8px;color:#6b7280;line-height:1.6;background:#f0fdf4;border:1px solid #d1fae5;border-radius:6px;padding:8px"><strong style="color:#059669">What happens:</strong><br>1. Claude queries Apple HealthKit for latest metrics<br>2. Computes training readiness score<br>3. Updates all charts and recommendations<br>4. Gives you the updated dashboard file<br><br><strong style="color:#059669">To enable auto-refresh:</strong> Set up the Oura Ring proxy (see SETUP_GUIDE.md). Then the refresh button pulls live data instantly — no Claude needed.</div>'
+    +'<button onclick="this.parentElement.parentElement.remove()" style="width:100%;margin-top:10px;padding:10px;background:#f3f4f6;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px">Close</button>';
+  d.appendChild(box);
+  document.body.appendChild(d);
+  document.getElementById('copyPrompt').onclick=function(){
+    navigator.clipboard.writeText(prompt).then(function(){
+      document.getElementById('copyPrompt').textContent='✓ Copied!';
+      document.getElementById('copyPrompt').style.borderColor='#059669';
+      document.getElementById('copyPrompt').style.color='#059669';
+    });
+  };
+}
+
 function buildHealth(){
   const el=document.getElementById('healthContent');const D=HEALTH_DATA;
   let h='<div style="text-align:center;margin-bottom:14px;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px">';
   h+='<div style="font-size:14px;font-weight:700;color:#ef4444;margin-bottom:4px">❤️‍🔥 Apple Health Metrics</div>';
   h+='<div style="font-size:9px;color:#888">Last synced: <strong style="color:#ef4444">'+D.synced+'</strong></div>';
-  h+='<div style="margin-top:8px"><button onclick="alert(\'Open Claude app → Say:\\n\\nPull fresh health data and update my dashboard\\n\\nClaude will query Apple Health, generate updated HEALTH_DATA, and provide the new dashboard file.\')" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px;touch-action:manipulation">🔄 Refresh — Pull from Apple Health</button></div>';
+  h+='<div style="margin-top:8px"><button onclick="showRefreshInstructions()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px;touch-action:manipulation">🔄 Refresh — Pull from Apple Health</button></div>';
   h+='<div style="font-size:7px;color:#bbb;margin-top:4px">Data pulled via Claude + HealthKit. Button shows refresh instructions.</div></div>';
   // Stat cards row
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:14px">';
@@ -596,7 +721,7 @@ function buildOverview(){
   h+='<span style="font-weight:600">💊 Ezetimibe</span> — NPC1L1 inhibitor (LDL synergy + adipocyte)<br>';
   h+='<span style="font-weight:600">💊 Enclomiphene</span> — SERM (testosterone → visceral fat + muscle)<br>';
   h+='<span style="font-weight:600">💊 Tadalafil 5mg</span> — PDE5i daily · <span style="color:#059669;font-size:8px">AJM 2025: 50M patients — reduced mortality, MI, stroke, dementia</span><br>';
-  h+='<span style="font-weight:600;color:#888">💉 CJC-1295/Ipa</span> — GH peptide M-F (paused for April IGF-1 baseline)<br>';
+  h+='<span style="font-weight:600;color:#888">💉 CJC-1295/Ipa</span> — <span style="color:#C0392B">DISCONTINUED</span> (cost + injection site management)<br>';
   h+='<span style="font-weight:600;color:#E24B4A">💉 Thymosin α-1 1.6mg</span> — thymic peptide 2x/wk × 6mo → 1x/wk maint · <span style="color:#059669;font-size:8px">ACTIVE: T-cell genesis + immune rejuvenation for WBC 2.9</span>';
   h+='</div></div>';
   // Supplements
@@ -842,9 +967,295 @@ function buildTransform(){
 
 // Timeline engine
 function buildAxis(d){const ax=document.getElementById('timeAxis');ax.innerHTML='';ax.style.position='relative';ax.style.height='42px';const nowW=getDrugNowW(d);const ticks=[{w:0,rel:'Start'},{w:4,rel:'Mo 1'},{w:13,rel:'Mo 3'},{w:26,rel:'Mo 6'},{w:52,rel:'Yr 1'},{w:78,rel:'Mo 18'},{w:104,rel:'Yr 2'}];if(d.totalW>=130)ticks.push({w:130,rel:'Yr 2.5'});let dt=ticks.map(t=>{const dd=w2d(d.start,t.w);const isN=Math.abs(t.w-nowW)<3;return{w:t.w,label:(t.w===0?_M[d.start.getMonth()]+'\n'+d.start.getFullYear():_M[dd.getMonth()]+' '+dd.getFullYear()+'\n'+t.rel),isNow:isN};});const nf=dt.some(t=>t.isNow);if(!nf&&nowW>0&&nowW<=d.totalW){const nd=w2d(d.start,nowW);dt.push({w:nowW,label:_M[nd.getMonth()]+' '+nd.getFullYear()+'\n(NOW)',isNow:true});dt.sort((a,b)=>a.w-b.w);}dt.forEach(t=>{const el=document.createElement('div');el.className='time-tick';el.style.left=wPct(d,t.w)+'%';const ps=t.label.split('\n');if(t.isNow){el.innerHTML='<span style="display:block;font-weight:800;color:#fff;font-size:8px;background:'+d.color+';padding:1px 6px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.2)">📍 '+ps[0]+'</span><span style="display:block;font-size:7px;font-weight:700;color:'+d.color+'">TODAY — Wk '+nowW+'</span>';}else{el.innerHTML='<span style="display:block;font-weight:500;color:#888;font-size:8px">'+ps[0]+'</span><span style="display:block;font-size:7px;color:#bbb">'+ps[1]+'</span>';}ax.appendChild(el);});}
-function buildRows(d){const c=document.getElementById('beneRows');c.innerHTML='';const nowW=getDrugNowW(d);let _rowIdx=0;sortedB(d).forEach(b=>{const row=document.createElement('div');row.className='bene-row'+(selectedId===b.id?' selected':'');row.onclick=()=>selectB(d,b.id);const label=document.createElement('div');label.className='bene-label';const track=document.createElement('div');track.className='bar-track';const os=document.createElement('div');os.className='seg';os.style.left=wPct(d,b.onset)+'%';os.style.width=wPct(d,Math.max(0,b.rampEnd-b.onset))+'%';os.style.background='#D3D1C7';os.style.opacity='0.6';track.appendChild(os);const dot=document.createElement('div');dot.className='onset-dot';dot.style.left='calc('+wPct(d,b.onset)+'% - 3px)';dot.style.background=d.color;track.appendChild(dot);const ap=document.createElement('div');ap.className='pin-active';ap.style.background=d.sel;ap.style.color=d.color;ap.style.border='1px solid '+d.accent;ap.style.left=wPct(d,b.onset)+'%';ap.textContent=(b.onset<=nowW?'⚡':'○')+' '+pD(d.start,b.onset);track.appendChild(ap);if(showStack){const ss=document.createElement('div');ss.className='seg';ss.style.left=wPct(d,b.rampEnd)+'%';ss.style.width=wPct(d,Math.max(0,b.optimal_stack-b.rampEnd))+'%';ss.style.background='linear-gradient(to right,'+b.color+'60,'+b.color+')';track.appendChild(ss);const ir=b.optimal_stack<=nowW;const dc=ir?b.color:'#E24B4A';const od=document.createElement('div');od.style.cssText='left:calc('+wPct(d,b.optimal_stack)+'% - 4px);background:'+dc+';box-shadow:0 0 0 2px '+b.color+'40;width:8px;height:8px;border-radius:50%;border:1.5px solid #fff;position:absolute;top:50%;transform:translateY(-50%);z-index:3';track.appendChild(od);const sp=document.createElement('div');sp.className='pin-stack';sp.style.left=wPct(d,b.optimal_stack)+'%';sp.style.background=dc+'18';sp.style.color=dc;sp.style.border='1px solid '+dc+'50';sp.textContent=(ir?'✅ ':'🎯 ')+pD(d.start,b.optimal_stack);track.appendChild(sp);}if(showSolo&&b.accel_weeks>0){const sd=document.createElement('div');sd.style.cssText='position:absolute;top:50%;transform:translateY(-50%);left:calc('+wPct(d,b.optimal_solo)+'% - 3px);background:#B4B2A9;width:6px;height:6px;border-radius:50%';track.appendChild(sd);const slp=document.createElement('div');slp.className='pin-solo';slp.style.left=wPct(d,b.optimal_solo)+'%';slp.textContent='⬜ '+pD(d.start,b.optimal_solo);track.appendChild(slp);}let pct=0,pL='',pC=d.color;if(nowW<b.onset){pct=0;pL='—';pC='#B4B2A9';}else if(nowW>=b.optimal_stack){pct=100;pL='100%';pC=b.color;}else{const r=b.optimal_stack-b.onset;pct=Math.round(((nowW-b.onset)/r)*100);pL=pct+'%';pC=pct>=70?b.color:pct>=30?'#EF9F27':'#E24B4A';}if(pct>0){const f=document.createElement('div');f.className='progress-fill';f.style.left=wPct(d,b.onset)+'%';f.style.width=Math.max(0,wPct(d,Math.min(nowW,b.optimal_stack)-b.onset))+'%';f.style.background=pC+'30';f.style.border='1px solid '+pC+'40';track.appendChild(f);}const nl=document.createElement('div');nl.className='now-overlay';nl.style.left=wPct(d,nowW)+'%';nl.style.background=d.color;nl.style.boxShadow='0 0 4px '+d.color+'60';track.appendChild(nl);if(_rowIdx===0||_rowIdx%5===0){const ndl=document.createElement('div');ndl.className='now-date-label';ndl.style.left=wPct(d,nowW)+'%';ndl.style.background=d.color+'20';ndl.style.color=d.color;ndl.style.border='1px solid '+d.color+'40';ndl.textContent='📍 '+NOW_DS;track.appendChild(ndl);}_rowIdx++;const pb=document.createElement('div');pb.className='pct-badge';pb.style.left=wPct(d,nowW)+'%';pb.style.background=pC;pb.textContent=pL;track.appendChild(pb);const tBg=pct===100?b.color:pct>=70?b.color+'30':pct>=30?d.sel:'#f0f0ee';const tC=pct===100?'#fff':pct>=70?b.color:pct>=30?d.color:'#999';const tT=pct===100?'✅ 100%':pct>0?pL:'—';label.innerHTML='<div style="display:flex;align-items:center;justify-content:flex-end;gap:3px"><span style="font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;background:'+tBg+';color:'+tC+'">'+tT+'</span></div><div style="margin-top:1px">'+b.icon+' '+b.title+'</div><span class="cat">'+b.cat+'</span>';row.appendChild(label);row.appendChild(track);c.appendChild(row);});}
-function selectB(d,id){selectedId=id;buildRows(d);const b=d.benefits.find(x=>x.id===id);if(!b)return;const nowW=getDrugNowW(d);const p=document.getElementById('detailPanel');p.style.borderColor=b.color;document.getElementById('dpTitle').textContent=b.icon+' '+b.title;document.getElementById('dpTitle').style.color=b.color;const ex=p.querySelector('.dp-grid');if(ex)ex.remove();let pct;if(nowW<b.onset)pct=0;else if(nowW>=b.optimal_stack)pct=100;else pct=Math.round(((nowW-b.onset)/(b.optimal_stack-b.onset))*100);const g=document.createElement('div');g.className='dp-grid';g.innerHTML='<div class="dp-cell" style="border-color:'+d.color+'40"><div class="dp-cell-label" style="color:'+d.color+'">⚡ Active</div><div class="dp-cell-val" style="color:'+d.color+';font-size:11px">'+fTS(d.start,b.onset)+'</div></div><div class="dp-cell"><div class="dp-cell-label">⬜ Alone</div><div class="dp-cell-val" style="color:#888;font-size:11px">'+fTS(d.start,b.optimal_solo)+'</div></div><div class="dp-cell" style="border-color:'+b.color+'40"><div class="dp-cell-label" style="color:'+b.color+'">🎯 Stack</div><div class="dp-cell-val" style="color:'+b.color+';font-size:11px">'+fTS(d.start,b.optimal_stack)+'</div><div class="dp-cell-sub">'+(b.accel_weeks>0?'⚡ '+Math.round(b.accel_weeks/4.33)+'mo faster':'—')+'</div></div>';document.getElementById('dpText').before(g);document.getElementById('dpText').textContent=b.detail;const sr=document.getElementById('dpStack');sr.innerHTML='';const cols={3:d.color,2:d.accent,1:'#ccc'};b.accelerators.forEach(a=>{const col=cols[a.strength]||'#aaa';const pill=document.createElement('span');pill.className='dp-pill';pill.style.background=col+'25';pill.style.color=col;pill.style.border='1px solid '+col+'50';pill.title=a.note;pill.textContent=a.name+(a.strength===3?' ★':' ◆');sr.appendChild(pill);});}
+function buildRows(d){const c=document.getElementById('beneRows');c.innerHTML='';const nowW=getDrugNowW(d);let _rowIdx=0;sortedB(d).forEach(b=>{const row=document.createElement('div');row.className='bene-row'+(selectedId===b.id?' selected':'');row.onclick=()=>selectB(d,b.id);const label=document.createElement('div');label.className='bene-label';const track=document.createElement('div');track.className='bar-track';const os=document.createElement('div');os.className='seg';os.style.left=wPct(d,b.onset)+'%';os.style.width=wPct(d,Math.max(0,b.rampEnd-b.onset))+'%';os.style.background='#D3D1C7';os.style.opacity='0.6';track.appendChild(os);const osW=wPct(d,Math.max(0,b.rampEnd-b.onset));if(osW>7){const osLbl=document.createElement('div');osLbl.style.cssText='position:absolute;top:50%;transform:translateY(-50%);font-size:6px;font-weight:700;color:#999;white-space:nowrap;pointer-events:none;z-index:2;letter-spacing:0.03em;text-transform:uppercase;overflow:hidden;left:'+wPct(d,b.onset)+'%;width:'+osW+'%;text-align:center';osLbl.textContent='Ramp-up';track.appendChild(osLbl);}const dot=document.createElement('div');dot.className='onset-dot';dot.style.left='calc('+wPct(d,b.onset)+'% - 3px)';dot.style.background=d.color;track.appendChild(dot);const ap=document.createElement('div');ap.className='pin-active';ap.style.background=d.sel;ap.style.color=d.color;ap.style.border='1px solid '+d.accent;ap.style.left=wPct(d,b.onset)+'%';ap.textContent=(b.onset<=nowW?'⚡':'○')+' '+pD(d.start,b.onset);track.appendChild(ap);if(showStack){const ss=document.createElement('div');ss.className='seg';ss.style.left=wPct(d,b.rampEnd)+'%';ss.style.width=wPct(d,Math.max(0,b.optimal_stack-b.rampEnd))+'%';ss.style.background='linear-gradient(to right,'+b.color+'60,'+b.color+')';track.appendChild(ss);const ssW=wPct(d,Math.max(0,b.optimal_stack-b.rampEnd));if(ssW>10){const ssLbl=document.createElement('div');ssLbl.style.cssText='position:absolute;top:50%;transform:translateY(-50%);font-size:6px;font-weight:700;color:#fff;white-space:nowrap;pointer-events:none;z-index:2;letter-spacing:0.03em;text-transform:uppercase;overflow:hidden;left:'+wPct(d,b.rampEnd)+'%;width:'+ssW+'%;text-align:center;text-shadow:0 0 3px rgba(0,0,0,0.3)';ssLbl.textContent='Active building';track.appendChild(ssLbl);}if(b.rampEnd<b.optimal_stack){const abReached=b.rampEnd<=nowW;const abDot=document.createElement('div');abDot.style.cssText='left:calc('+wPct(d,b.rampEnd)+'% - 4px);background:'+(abReached?b.color:'#999')+';box-shadow:0 0 0 2px '+(abReached?b.color:'#999')+'40;width:8px;height:8px;border-radius:50%;border:1.5px solid #fff;position:absolute;top:50%;transform:translateY(-50%);z-index:3';track.appendChild(abDot);const abPin=document.createElement('div');abPin.style.cssText='position:absolute;top:-20px;font-size:7px;font-weight:700;white-space:nowrap;transform:translateX(-50%);padding:1px 4px;border-radius:3px;pointer-events:none;z-index:5;background:'+(abReached?b.color+'18':'#f5f5f0')+';color:'+(abReached?b.color:'#999')+';border:1px solid '+(abReached?b.color+'50':'#ddd');abPin.style.left=wPct(d,b.rampEnd)+'%';abPin.textContent=(abReached?'▶ ':'◇ ')+pD(d.start,b.rampEnd);track.appendChild(abPin);}const ir=b.optimal_stack<=nowW;const dc=ir?b.color:'#E24B4A';const od=document.createElement('div');od.style.cssText='left:calc('+wPct(d,b.optimal_stack)+'% - 4px);background:'+dc+';box-shadow:0 0 0 2px '+b.color+'40;width:8px;height:8px;border-radius:50%;border:1.5px solid #fff;position:absolute;top:50%;transform:translateY(-50%);z-index:3';track.appendChild(od);const sp=document.createElement('div');sp.className='pin-stack';sp.style.left=wPct(d,b.optimal_stack)+'%';sp.style.background=dc+'18';sp.style.color=dc;sp.style.border='1px solid '+dc+'50';sp.textContent=(ir?'✅ ':'🎯 ')+pD(d.start,b.optimal_stack);track.appendChild(sp);}if(showSolo&&b.accel_weeks>0){const sd=document.createElement('div');sd.style.cssText='position:absolute;top:50%;transform:translateY(-50%);left:calc('+wPct(d,b.optimal_solo)+'% - 3px);background:#B4B2A9;width:6px;height:6px;border-radius:50%';track.appendChild(sd);const slp=document.createElement('div');slp.className='pin-solo';slp.style.left=wPct(d,b.optimal_solo)+'%';slp.textContent='⬜ '+pD(d.start,b.optimal_solo);track.appendChild(slp);}let pct=0,pL='',pC=d.color,phN='';if(nowW<b.onset){pct=0;pL='—';pC='#B4B2A9';phN='';}else if(nowW>=b.optimal_stack){pct=100;pL='100%';pC=b.color;phN='✅';}else if(nowW<b.rampEnd){const r=Math.max(1,b.rampEnd-b.onset);pct=Math.round(((nowW-b.onset)/r)*100);pL=pct+'% ramp-up';pC='#B4B2A9';phN='Ramp-up';}else{const r=Math.max(1,b.optimal_stack-b.rampEnd);pct=Math.round(((nowW-b.rampEnd)/r)*100);pL=pct+'% active';pC=b.color;phN='Active';}if(nowW>b.onset){const f=document.createElement('div');f.className='progress-fill';f.style.left=wPct(d,b.onset)+'%';f.style.width=Math.max(0,wPct(d,Math.min(nowW,b.optimal_stack)-b.onset))+'%';f.style.background=(phN==='Ramp-up'?'#B4B2A9':pC)+'30';f.style.border='1px solid '+(phN==='Ramp-up'?'#B4B2A9':pC)+'40';track.appendChild(f);}const nl=document.createElement('div');nl.className='now-overlay';nl.style.left=wPct(d,nowW)+'%';nl.style.background=d.color;nl.style.boxShadow='0 0 4px '+d.color+'60';track.appendChild(nl);if(_rowIdx===0||_rowIdx%5===0){const ndl=document.createElement('div');ndl.className='now-date-label';ndl.style.left=wPct(d,nowW)+'%';ndl.style.background=d.color+'20';ndl.style.color=d.color;ndl.style.border='1px solid '+d.color+'40';ndl.textContent='📍 '+NOW_DS;track.appendChild(ndl);}_rowIdx++;const pb=document.createElement('div');pb.className='pct-badge';pb.style.left=wPct(d,nowW)+'%';pb.style.background=pC;pb.textContent=pL;track.appendChild(pb);const tBg=phN==='✅'?b.color:phN==='Active'?d.sel:phN==='Ramp-up'?'#e8e8e4':'#f0f0ee';const tC=phN==='✅'?'#fff':phN==='Active'?b.color:phN==='Ramp-up'?'#888':'#999';const tT=phN==='✅'?'✅ 100%':(phN==='Ramp-up'||phN==='Active')?pL:'—';label.innerHTML='<div style="display:flex;align-items:center;justify-content:flex-end;gap:3px"><span style="font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;background:'+tBg+';color:'+tC+'">'+tT+'</span></div><div style="margin-top:1px">'+b.icon+' '+b.title+'</div><span class="cat">'+b.cat+'</span>';row.appendChild(label);row.appendChild(track);c.appendChild(row);});}
+function selectB(d,id){selectedId=id;buildRows(d);const b=d.benefits.find(x=>x.id===id);if(!b)return;const nowW=getDrugNowW(d);const p=document.getElementById('detailPanel');p.style.borderColor=b.color;document.getElementById('dpTitle').textContent=b.icon+' '+b.title;document.getElementById('dpTitle').style.color=b.color;const ex=p.querySelector('.dp-grid');if(ex)ex.remove();let pct,phTxt;if(nowW<b.onset){pct=0;phTxt='Not started';}else if(nowW>=b.optimal_stack){pct=100;phTxt='Complete';}else if(nowW<b.rampEnd){const r=Math.max(1,b.rampEnd-b.onset);pct=Math.round(((nowW-b.onset)/r)*100);phTxt=pct+'% through ramp-up';}else{const r=Math.max(1,b.optimal_stack-b.rampEnd);pct=Math.round(((nowW-b.rampEnd)/r)*100);phTxt=pct+'% through active building';}const g=document.createElement('div');g.className='dp-grid';g.innerHTML='<div class="dp-cell" style="border-color:'+d.color+'40"><div class="dp-cell-label" style="color:'+d.color+'">⚡ Active</div><div class="dp-cell-val" style="color:'+d.color+';font-size:11px">'+fTS(d.start,b.onset)+'</div></div><div class="dp-cell"><div class="dp-cell-label">▶ Building</div><div class="dp-cell-val" style="color:'+b.color+';font-size:11px">'+fTS(d.start,b.rampEnd)+'</div></div><div class="dp-cell" style="border-color:'+b.color+'40"><div class="dp-cell-label" style="color:'+b.color+'">🎯 Optimal</div><div class="dp-cell-val" style="color:'+b.color+';font-size:11px">'+fTS(d.start,b.optimal_stack)+'</div><div class="dp-cell-sub">'+phTxt+'</div></div>';document.getElementById('dpText').before(g);document.getElementById('dpText').textContent=b.detail;const sr=document.getElementById('dpStack');sr.innerHTML='';const cols={3:d.color,2:d.accent,1:'#ccc'};b.accelerators.forEach(a=>{const col=cols[a.strength]||'#aaa';const pill=document.createElement('span');pill.className='dp-pill';pill.style.background=col+'25';pill.style.color=col;pill.style.border='1px solid '+col+'50';pill.title=a.note;pill.textContent=a.name+(a.strength===3?' ★':' ◆');sr.appendChild(pill);});}
 
+function buildTraining(){
+  const el=document.getElementById('trainingContent');
+  const D=HEALTH_DATA;const T=D.training;
+  let h='';
+  // HERO - READINESS SCORE
+  const sc=T.today.score;const sC=sc>=80?'#059669':sc>=60?'#d97706':'#dc2626';
+  const sBg=sc>=80?'#f0fdf4':sc>=60?'#fffbeb':'#fef2f2';const sBrd=sc>=80?'#d1fae5':sc>=60?'#fef3c7':'#fecaca';
+  const sLvl=sc>=80?'GO — Full session':sc>=60?'MODERATE — Cap intensity':'REST or Zone 2 only';
+  h+='<div style="background:'+sBg+';border:2px solid '+sBrd+';border-radius:12px;padding:16px;margin-bottom:14px;text-align:center">';
+  h+='<div style="font-size:8px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">🏋️ Training Readiness — '+NOW_DS+'</div>';
+  h+='<div style="font-size:48px;font-weight:800;color:'+sC+';line-height:1">'+sc+'</div>';
+  h+='<div style="font-size:14px;font-weight:700;color:'+sC+';margin:4px 0">'+T.today.level+'</div>';
+  h+='<div style="font-size:10px;color:#6b7280;max-width:340px;margin:6px auto 0">'+T.today.rec+'</div>';
+  // Component bars
+  h+='<div style="display:flex;gap:4px;justify-content:center;margin-top:12px;flex-wrap:wrap">';
+  T.components.forEach(function(c){
+    const bg=c.score>=80?'#f0fdf4':c.score>=60?'#fffbeb':'#fef2f2';
+    const brd=c.score>=80?'#d1fae5':c.score>=60?'#fef3c7':'#fecaca';
+    h+='<div style="background:'+bg+';border:1px solid '+brd+';border-radius:6px;padding:5px 8px;text-align:center;min-width:90px">';
+    h+='<div style="font-size:7px;color:#9ca3af;text-transform:uppercase">'+c.name+'</div>';
+    h+='<div style="font-size:18px;font-weight:700;color:'+c.color+'">'+c.score+'</div>';
+    h+='<div style="font-size:6px;color:#bbb">'+c.weight+'% weight</div></div>';
+  });
+  h+='</div></div>';
+
+  // REFRESH BUTTON + DATA FRESHNESS
+  h+='<div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">';
+  h+='<button onclick="showRefreshInstructions()" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;min-height:44px;touch-action:manipulation">🔄 Pull Fresh Health Data</button>';
+  h+='<div style="text-align:center;font-size:7px;color:#9ca3af;min-width:80px">Last snapshot:<br><strong style="color:#555">'+D.synced+'</strong></div>';
+  h+='</div>';
+
+  // READINESS CHECKLIST
+  h+='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">✅ Readiness Checklist</div>';
+  var checks=[
+    {i:'Deep sleep',c:D.sleep.lastNight.deep+'m',t:'≥50m',s:D.sleep.lastNight.deep>=50,n:D.sleep.lastNight.deep>=80?'Elite':'Adequate'},
+    {i:'REM sleep',c:D.sleep.lastNight.rem+'m',t:'≥60m',s:D.sleep.lastNight.rem>=60,n:D.sleep.lastNight.rem>=90?'Excellent':'Adequate'},
+    {i:'HRV',c:Math.round(D.hrv.avg)+'ms',t:'≥70ms',s:D.hrv.avg>=70,n:D.hrv.avg>=85?'Strong':'Acceptable'},
+    {i:'RHR',c:Math.round(D.rhr.avg)+' bpm',t:'≤75',s:D.rhr.avg<=75,n:D.rhr.avg<=68?'Optimal':'Elevated from cold'},
+    {i:'Steps (avg)',c:D.steps.avg.toLocaleString(),t:'≥8K',s:D.steps.avg>=8000,n:D.steps.avg>=10000?'Active':'Moderate'},
+    {i:'VO2 Max',c:D.vo2.current,t:'≥35',s:D.vo2.current>=35,n:D.vo2.current<33?'⚠ Needs Zone 2':'Fair'},
+    {i:'SpO2',c:D.spo2.avg+'%',t:'≥95%',s:D.spo2.avg>=95,n:D.spo2.avg<94?'Monitor closely':'Acceptable'},
+    {i:'Weight',c:D.weight.current+' lb',t:'↓trend',s:D.weight.current<=D.weight.start,n:'↓'+(D.weight.start-D.weight.current).toFixed(1)+' from start'},
+    {i:'Bedtime',c:D.sleep.lastNight.bedtime,t:'≤11PM',s:true,n:'Track consistency'},
+    {i:'Body fat',c:D.bodyFat.current,t:'18-20%',s:false,n:'→'+D.bodyFat.target}
+  ];
+  checks.forEach(function(c){
+    var dot=c.s?'#059669':'#d97706';
+    h+='<div style="display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:1px solid #f0f0ee;font-size:11px">';
+    h+='<span style="width:7px;height:7px;border-radius:4px;background:'+dot+';flex-shrink:0"></span>';
+    h+='<span style="min-width:68px;font-weight:600;color:#1a1a1a">'+c.i+'</span>';
+    h+='<span style="min-width:52px;text-align:center">'+c.c+'</span>';
+    h+='<span style="min-width:38px;text-align:center;font-size:9px;color:#9ca3af">'+c.t+'</span>';
+    h+='<span style="flex:1;font-size:9px;color:#6b7280">'+c.n+'</span></div>';
+  });
+  h+='</div>';
+
+  // 7-DAY TREND CHART (reuse from health)
+  h+='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;margin-bottom:4px">📈 7-Day Readiness Trend</div>';
+  h+='<div id="tr_readiness" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 6px;overflow-x:auto;-webkit-overflow-scrolling:touch"></div></div>';
+  setTimeout(function(){
+    var c=document.getElementById('tr_readiness');if(!c)return;
+    var R=T.sevenDay;
+    var W=Math.max(c.clientWidth-12,320),H=160,p={t:14,r:12,b:28,l:32};
+    var gW=W-p.l-p.r,gH=H-p.t-p.b;
+    var xF=function(i){return p.l+(i/(R.labels.length-1))*gW;};
+    var yF=function(v){return p.t+((100-v)/(100-40))*gH;};
+    var s='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+    [40,55,70,85,100].forEach(function(v){
+      s+='<line x1="'+p.l+'" y1="'+yF(v).toFixed(1)+'" x2="'+(W-p.r)+'" y2="'+yF(v).toFixed(1)+'" stroke="#e5e7eb" stroke-width="0.5"/>';
+      s+='<text x="'+(p.l-4)+'" y="'+(yF(v)+3).toFixed(1)+'" text-anchor="end" font-size="7" fill="#9ca3af" font-family="-apple-system,sans-serif">'+v+'</text>';
+    });
+    s+='<rect x="'+p.l+'" y="'+yF(100).toFixed(1)+'" width="'+gW+'" height="'+(yF(80)-yF(100)).toFixed(1)+'" fill="#dcfce7" opacity="0.3"/>';
+    s+='<rect x="'+p.l+'" y="'+yF(80).toFixed(1)+'" width="'+gW+'" height="'+(yF(60)-yF(80)).toFixed(1)+'" fill="#fef9c3" opacity="0.3"/>';
+    s+='<rect x="'+p.l+'" y="'+yF(60).toFixed(1)+'" width="'+gW+'" height="'+(yF(40)-yF(60)).toFixed(1)+'" fill="#fee2e2" opacity="0.3"/>';
+    s+='<text x="'+(W-p.r-2)+'" y="'+(yF(90)+3).toFixed(1)+'" text-anchor="end" font-size="6" fill="#16a34a" opacity="0.6">GO HARD</text>';
+    s+='<text x="'+(W-p.r-2)+'" y="'+(yF(70)+3).toFixed(1)+'" text-anchor="end" font-size="6" fill="#ca8a04" opacity="0.6">MODERATE</text>';
+    s+='<text x="'+(W-p.r-2)+'" y="'+(yF(50)+3).toFixed(1)+'" text-anchor="end" font-size="6" fill="#dc2626" opacity="0.6">REST</text>';
+    var rd='M';R.readiness.forEach(function(v,i){rd+=(i?'L':'')+xF(i).toFixed(1)+','+yF(v).toFixed(1);});
+    s+='<path d="'+rd+'" fill="none" stroke="#16a34a" stroke-width="2.5"/>';
+    R.readiness.forEach(function(v,i){
+      var fc=v>=80?'#059669':v>=60?'#f59e0b':'#dc2626';
+      s+='<circle cx="'+xF(i).toFixed(1)+'" cy="'+yF(v).toFixed(1)+'" r="4" fill="'+fc+'" stroke="#fff" stroke-width="1.5"/>';
+      s+='<text x="'+xF(i).toFixed(1)+'" y="'+(yF(v)-8).toFixed(1)+'" text-anchor="middle" font-size="8" font-weight="700" fill="'+fc+'">'+v+'</text>';
+    });
+    R.labels.forEach(function(lb,i){s+='<text x="'+xF(i).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="7" fill="'+(i===R.labels.length-1?'#16a34a':'#9ca3af')+'" font-weight="'+(i===R.labels.length-1?'700':'400')+'">'+lb.replace('Mar ','')+'</text>';});
+    s+='</svg>';c.innerHTML=s;
+  },150);
+
+  // SESSION RECOMMENDATION
+  h+='<div style="background:#f0fdf4;border:1px solid #d1fae5;border-radius:10px;padding:12px;margin-bottom:14px;border-left:3px solid #16a34a">';
+  h+='<div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:6px">🏋️ Session Recommendation</div>';
+  h+='<div style="font-size:9px;color:#555;line-height:1.7">';
+  h+='<strong>Intensity:</strong> '+T.today.rec+'<br>';
+  h+='<strong>Pre-workout:</strong> Aniracetam 400mg + Cognizin 250mg with fat, 30-45 min before.<br>';
+  h+='<strong>Fuel:</strong> 40g protein + 40-50g carbs 2-3 hrs before. Never train fasted (5 glucose agents).<br>';
+  h+='<strong>Hydration:</strong> 500-750 mL during session. Jardiance + Mounjaro = increased fluid loss.<br>';
+  h+='<strong>Post:</strong> 40g protein within 1 hr. Tα1 2x/wk supports immune recovery\'s session.<br>';
+  h+='<strong>Allergy:</strong> Loratadine before training if pollen exposure. Flonase if congestion returns.</div></div>';
+
+  // GO / CAUTION SIGNALS
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">';
+  h+='<div style="background:#f0fdf4;border:1px solid #d1fae5;border-radius:7px;padding:8px"><div style="font-size:9px;font-weight:700;color:#059669;margin-bottom:3px">✅ GO Signals</div><div style="font-size:8px;color:#555;line-height:1.5">';
+  h+='• Deep sleep '+D.sleep.lastNight.deep+'m'+(D.sleep.lastNight.deep>=60?' (elite)':'')+'<br>';
+  h+='• Weight ↓'+(D.weight.start-D.weight.current).toFixed(1)+' lb trending<br>';
+  h+='• RHR '+Math.round(D.rhr.avg)+' — '+(D.rhr.avg<=70?'optimal':'acceptable')+'<br>';
+  h+='• Steps avg '+D.steps.avg.toLocaleString()+'</div></div>';
+  h+='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:8px"><div style="font-size:9px;font-weight:700;color:#dc2626;margin-bottom:3px">⚠️ CAUTION</div><div style="font-size:8px;color:#555;line-height:1.5">';
+  h+='• VO2 '+D.vo2.current+' — needs Zone 2<br>';
+  h+='• Cardio age 55 (>chrono 52)<br>';
+  h+='• SpO2 avg '+D.spo2.avg+'%<br>';
+  h+='• 5 glucose agents → hypo risk</div></div></div>';
+
+  // RISK FACTORS (collapsible)
+  h+='<div style="margin-bottom:14px"><div onclick="document.getElementById(\'tr_risks\').style.display=document.getElementById(\'tr_risks\').style.display===\'none\'?\'block\':\'none\'" style="font-size:12px;font-weight:700;cursor:pointer;padding:6px 0;border-bottom:1px solid #eee">⚠️ Active Risk Factors ▸</div>';
+  h+='<div id="tr_risks" style="display:none;margin-top:6px">';
+  var risks=[
+    {r:'Hypoglycemia',s:'MOD',sc:'#dc2626',m:'5 glucose agents during exercise. Eat carbs 2-3 hrs before. Never train fasted.'},
+    {r:'Dehydration',s:'MOD',sc:'#dc2626',m:'Jardiance + Mounjaro + FL heat. Pre-hydrate 500 mL. 3-4L total/day.'},
+    {r:'Connective tissue',s:'LOW',sc:'#d97706',m:'Progressive reload after any layoff. 70% → 85% → 100% over 3 sessions.'},
+    {r:'Allergy flare',s:'LOW',sc:'#d97706',m:'Pollen season. Loratadine before training if outdoor exposure.'},
+    {r:'Recovery window',s:'LOW',sc:'#d97706',m:'Late eating disrupts HRV + sleep. Train by 5 PM, eat by 7 PM, bed by 11 PM.'},
+    {r:'Immune stress',s:'BG',sc:'#9ca3af',m:'WBC 2.9. Avoid training to failure when readiness <70. Gradual reload.'}
+  ];
+  risks.forEach(function(r){
+    var bg=r.s==='MOD'?'#fef2f2':r.s==='LOW'?'#fffbeb':'#f7f7f5';
+    h+='<div style="display:flex;gap:6px;padding:5px 4px;border-bottom:1px solid #f0f0ee;font-size:10px;align-items:center">';
+    h+='<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:8px;font-weight:600;background:'+bg+';color:'+r.sc+';min-width:28px;text-align:center">'+r.s+'</span>';
+    h+='<span style="min-width:80px;font-weight:600;color:#1a1a1a">'+r.r+'</span>';
+    h+='<span style="flex:1;color:#6b7280;font-size:9px">'+r.m+'</span></div>';
+  });
+  h+='</div></div>';
+
+  // MILESTONES
+  h+='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">🎯 Milestones</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:5px">';
+  var ms=[
+    {d:'Apr 14-20',m:'Labs (HCY, cortisol)',c:'#d97706',bg:'#fffbeb',bd:'#fef3c7'},
+    {d:'Apr 26',m:'Jardiance trough Wk17',c:'#1D9E75',bg:'#f0fdf4',bd:'#d1fae5'},
+    {d:'May 2026',m:'Zone 2 routine',c:'#dc2626',bg:'#fef2f2',bd:'#fecaca'},
+    {d:'Jul 1',m:'Peak capacity',c:'#7c3aed',bg:'#f5f3ff',bd:'#ede9fe'},
+    {d:'Sep 2026',m:'185-190 lb / 18-20%',c:'#7c3aed',bg:'#f5f3ff',bd:'#ede9fe'}
+  ];
+  ms.forEach(function(m){
+    h+='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:'+m.bg+';border:1px solid '+m.bd+'">';
+    h+='<span style="font-size:8px;font-weight:700;color:'+m.c+'">'+m.d+'</span>';
+    h+='<span style="font-size:8px;color:#6b7280">'+m.m+'</span></div>';
+  });
+  h+='</div></div>';
+
+  // PRE-WORKOUT PROTOCOL
+  h+='<div style="background:#f7f7f5;border-left:3px solid #16a34a;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:14px">';
+  h+='<div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:6px">💊 Pre-Workout Protocol</div>';
+  h+='<div style="font-size:9px;color:#555;line-height:1.8">';
+  h+='<strong>T-3 hrs:</strong> 40g protein + 40-50g carbs (glycogen loading for 5 glucose agents)<br>';
+  h+='<strong>T-60 min:</strong> Loratadine 10mg if pollen exposure expected<br>';
+  h+='<strong>T-30 min:</strong> Aniracetam 400mg + Cognizin 250mg with small fat source<br>';
+  h+='<strong>During:</strong> 500-750 mL water + electrolytes (Jardiance + Mounjaro dehydration)<br>';
+  h+='<strong>Post:</strong> 40g protein within 1 hr → Protein + creatine support recovery<br>';
+  h+='<strong>Pepcid note:</strong> If taking for allergies, take midday — NOT with AM zinc/P5P or PM magnesium</div></div>';
+
+  // COLD RECOVERY TIMELINE (collapsible)
+  h+='<div style="margin-bottom:14px"><div onclick="document.getElementById(\'tr_recovery\').style.display=document.getElementById(\'tr_recovery\').style.display===\'none\'?\'block\':\'none\'" style="font-size:12px;font-weight:700;cursor:pointer;padding:6px 0;border-bottom:1px solid #eee">📋 Cold Recovery Timeline ▸</div>';
+  h+='<div id="tr_recovery" style="display:none;margin-top:6px">';
+  var tl=[
+    {d:'Mar 10',st:'12,671',dp:'30m',hrv:'70',rhr:'79',p:'Cold onset',bg:'#FDEBD0'},
+    {d:'Mar 11',st:'8,591',dp:'47m',hrv:'80',rhr:'69',p:'Acute cold (SpO2 91.2%)',bg:'#FADBD8'},
+    {d:'Mar 14',st:'4,463',dp:'—',hrv:'94',rhr:'76',p:'Deep cold',bg:'#FADBD8'},
+    {d:'Mar 16',st:'1,588',dp:'69m',hrv:'90',rhr:'79',p:'Activity bottom / sleep bounce',bg:'#FADBD8'},
+    {d:'Mar 17',st:'5,378',dp:'84m',hrv:'89',rhr:'65',p:'Turning point',bg:'#E8F8F5'},
+    {d:'Mar 19',st:'11,884',dp:'—',hrv:'80',rhr:'71',p:'Activity surging',bg:'#E8F8F5'},
+    {d:'Mar 21',st:'14,626',dp:'85m',hrv:'79',rhr:'74',p:'Best step day',bg:'#E8F8F5'},
+    {d:'Mar 22',st:'11,168',dp:'84m',hrv:'99',rhr:'73',p:'✅ Cleared for training',bg:'#D1FAE5'},
+    {d:'Mar 23',st:'—',dp:'—',hrv:'—',rhr:'—',p:'Session 1 — Upper body 70%',bg:'#D1FAE5'}
+  ];
+  h+='<div style="display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:0;font-size:9px">';
+  h+='<div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666">Date</div><div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666;text-align:right">Steps</div><div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666;text-align:right">Deep</div><div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666;text-align:right">HRV</div><div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666;text-align:right">RHR</div><div style="padding:3px 6px;font-weight:700;background:#f0f0ee;color:#666">Phase</div>';
+  tl.forEach(function(t){
+    h+='<div style="padding:3px 6px;background:'+t.bg+';font-weight:600">'+t.d+'</div>';
+    h+='<div style="padding:3px 6px;background:'+t.bg+';text-align:right">'+t.st+'</div>';
+    h+='<div style="padding:3px 6px;background:'+t.bg+';text-align:right">'+t.dp+'</div>';
+    h+='<div style="padding:3px 6px;background:'+t.bg+';text-align:right">'+t.hrv+'</div>';
+    h+='<div style="padding:3px 6px;background:'+t.bg+';text-align:right">'+t.rhr+'</div>';
+    h+='<div style="padding:3px 6px;background:'+t.bg+';color:#555">'+t.p+'</div>';
+  });
+  h+='</div></div></div>';
+
+  // FOOTER NOTE
+  h+='<div style="font-size:8px;color:#bbb;text-align:center;margin-top:10px;line-height:1.5">Data: Apple Health + Oura Ring. Training readiness = 30% HRV recovery + 25% RHR + 25% sleep + 10% HRV trend + 10% walking HR.<br>Not medical advice. Consult your physicians. Pepcid timing: midday only (away from AM zinc/P5P and PM magnesium).</div>';
+
+  el.innerHTML=h;
+}
+
+function buildTa1Status(){
+  const d=DRUGS.ta1;const nowW=getDrugNowW(d);const daysSince=Math.max(0,Math.round((_today-d.start)/(1000*60*60*24)));
+  const loadingEndW=26;const isLoading=nowW<loadingEndW;
+  const phase=isLoading?'Loading Phase (2x/week)':'Maintenance Phase (1x/week)';
+  const phaseColor=isLoading?'#E24B4A':'#059669';
+  // Injection count: first injection Mar 31. 2x/week = every 3.5 days. But user has only 1 so far as of today.
+  const firstInjDate=new Date('2026-03-31');
+  const injDaysSince=Math.max(0,Math.round((_today-firstInjDate)/(1000*60*60*24)));
+  const injections=Math.max(1,Math.floor(injDaysSince/3.5)+1);
+  const phasePct=isLoading?Math.round((nowW/loadingEndW)*100):100;
+  const loadingEnd=w2d(d.start,26);const loadingEndStr=_M[loadingEnd.getMonth()]+' '+loadingEnd.getDate()+', '+loadingEnd.getFullYear();
+  const daysToLoading=isLoading?Math.round((loadingEnd-_today)/(1000*60*60*24)):0;
+  let nextMile='',nextDate='',nextDays=0;
+  if(nowW<2){nextMile='April labs (earliest signal)';const nd=new Date('2026-04-14');nextDate=_M[nd.getMonth()]+' '+nd.getDate();nextDays=Math.round((nd-_today)/(1000*60*60*24));}
+  else if(nowW<13){nextMile='3-month checkpoint (definitive)';const nd=w2d(d.start,13);nextDate=_M[nd.getMonth()]+' '+nd.getDate()+', '+nd.getFullYear();nextDays=Math.round((nd-_today)/(1000*60*60*24));}
+  else if(nowW<26){nextMile='Loading → Maintenance transition';nextDate=loadingEndStr;nextDays=daysToLoading;}
+  else{nextMile='Maintenance — steady state';nextDate='Ongoing';nextDays=0;}
+  let h='<div style="background:linear-gradient(135deg,#ECFEFF,#F0F9FF);border:1px solid #0891B240;border-radius:10px;padding:12px;margin-bottom:12px">';
+  // First injection fact
+  h+='<div style="text-align:center;font-size:8px;color:#0891B2;margin-bottom:6px;font-weight:600">💉 First injection: March 31, 2026 · Injections received: '+injections+' · Protocol: 1.6mg SC 2x/week</div>';
+  // Top row: big stats
+  h+='<div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:10px">';
+  h+='<div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#0891B2">Day '+daysSince+'</div><div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:0.1em">On Tα1</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#0891B2">Wk '+nowW+'</div><div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:0.1em">of 78 total</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#0891B2">'+injections+'</div><div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:0.1em">Injections received</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:28px;font-weight:800;color:'+phaseColor+'">'+phase.split(' (')[0]+'</div><div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:0.1em">2x/week · target '+loadingEndW+' weeks</div></div>';
+  h+='</div>';
+  // Loading phase progress bar
+  h+='<div style="margin:0 auto 10px;max-width:400px">';
+  h+='<div style="display:flex;justify-content:space-between;font-size:8px;color:#888;margin-bottom:2px"><span>Loading phase</span><span>'+phasePct+'%'+(isLoading?' · '+daysToLoading+' days to maintenance':'')+'</span></div>';
+  h+='<div style="height:6px;background:#E0F2FE;border-radius:3px;overflow:hidden;position:relative">';
+  h+='<div style="height:100%;width:'+Math.min(phasePct,100)+'%;background:linear-gradient(90deg,#0891B2,#22D3EE);border-radius:3px;transition:width 0.5s"></div>';
+  h+='</div>';
+  h+='<div style="display:flex;justify-content:space-between;font-size:7px;color:#aaa;margin-top:2px"><span>Mar 31, 2026 (1st injection)</span><span>'+loadingEndStr+'</span></div>';
+  h+='</div>';
+  // Next milestone
+  h+='<div style="text-align:center;margin-bottom:10px;padding:5px 12px;background:#fff;border-radius:6px;border:1px solid #0891B220;display:inline-block;margin-left:auto;margin-right:auto;width:100%">';
+  h+='<span style="font-size:8px;color:#888">NEXT MILESTONE → </span><span style="font-size:10px;font-weight:600;color:#0891B2">'+nextMile+'</span>';
+  if(nextDays>0)h+=' <span style="font-size:8px;color:#888">('+nextDate+' · '+nextDays+' days)</span>';
+  h+='</div>';
+  // Per-adaptation status grid with Active Building dates
+  h+='<div style="font-size:9px;font-weight:600;color:#444;margin:8px 0 4px">Adaptation status as of '+NOW_DS+':</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:7px;padding:4px 8px;background:#fff;border-radius:5px;border:1px solid #e5e7eb">';
+  h+='<span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:18px;height:8px;border-radius:2px;background:#D3D1C7;opacity:0.7"></span><strong>RAMP-UP</strong> — mechanism activating, no visible results yet</span>';
+  h+='<span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:18px;height:8px;border-radius:2px;background:linear-gradient(90deg,#0891B260,#0891B2)"></span><strong>ACTIVE BUILDING</strong> — measurable benefits accumulating</span>';
+  h+='<span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:18px;height:8px;border-radius:2px;background:#0891B230;border:1px solid #0891B240"></span><strong>YOUR PROGRESS</strong> — how far you have traveled</span>';
+  h+='<span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:2px;height:12px;background:#0891B2"></span><strong>📍 TODAY</strong> — current position</span>';
+  h+='</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:5px">';
+  d.benefits.forEach(b=>{
+    let pct=0,status='',sColor='#aaa',icon='○';
+    // Calculate key dates for this adaptation
+    const rampEndDate=w2d(d.start,b.rampEnd);
+    const rampEndStr=_M[rampEndDate.getMonth()]+' '+rampEndDate.getDate()+', '+rampEndDate.getFullYear();
+    const optDate=w2d(d.start,b.optimal_stack);
+    const optStr=_M[optDate.getMonth()]+' '+optDate.getDate()+', '+optDate.getFullYear();
+    const daysToActive=Math.max(0,Math.round((rampEndDate-_today)/(1000*60*60*24)));
+    const activeReached=nowW>=b.rampEnd;
+    if(nowW<b.onset){pct=0;status='Starts Wk '+b.onset;sColor='#888';icon='⏳';}
+    else if(nowW>=b.optimal_stack){pct=100;status='✅ COMPLETE';sColor=b.color;icon='✅';}
+    else if(nowW<b.rampEnd){const r=Math.max(1,b.rampEnd-b.onset);pct=Math.round(((nowW-b.onset)/r)*100);status='RAMP-UP '+pct+'%';sColor='#B4B2A9';icon='🔘';}
+    else{const r=Math.max(1,b.optimal_stack-b.rampEnd);pct=Math.round(((nowW-b.rampEnd)/r)*100);status='ACTIVE BUILDING '+pct+'%';sColor=b.color;icon='▶️';}
+    const barW=Math.max(pct,2);
+    h+='<div style="background:#fff;border-radius:6px;padding:6px 8px;border:1px solid '+(pct===100?b.color+'40':'#e5e7eb')+';border-left:3px solid '+sColor+'">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+    h+='<span style="font-size:9px;font-weight:600;color:#333">'+b.icon+' '+b.title.split(' (')[0].substring(0,25)+'</span>';
+    h+='<span style="font-size:10px;font-weight:800;color:'+sColor+'">'+pct+'%</span>';
+    h+='</div>';
+    h+='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin:3px 0;overflow:hidden"><div style="height:100%;width:'+barW+'%;background:'+sColor+';border-radius:2px"></div></div>';
+    h+='<div style="font-size:7px;color:#999">'+icon+' '+status;
+    if(pct>0&&pct<100){
+      if(nowW<b.rampEnd){const wLeft=b.rampEnd-nowW;h+=' · ramp-up done in ~'+Math.round(wLeft/4.33)+'mo';}
+      else{const wLeft=b.optimal_stack-nowW;h+=' · optimal in ~'+Math.round(wLeft/4.33)+'mo';}
+    }
+    h+='</div>';
+    // Active Building date line
+    if(b.rampEnd>0){
+      if(activeReached){
+        h+='<div style="font-size:7px;margin-top:3px;color:'+b.color+';font-weight:600">✅ Active building began: '+rampEndStr+'</div>';
+      }else{
+        h+='<div style="font-size:7px;margin-top:3px;color:#E24B4A;font-weight:600">🎯 Active building begins: '+rampEndStr+' ('+daysToActive+' days)</div>';
+      }
+    }
+    // Optimal date line
+    if(pct<100){
+      const daysToOpt=Math.max(0,Math.round((optDate-_today)/(1000*60*60*24)));
+      h+='<div style="font-size:7px;color:#888;margin-top:1px">🏁 Optimal by: '+optStr+' ('+daysToOpt+' days)</div>';
+    }
+    h+='</div>';
+  });
+  h+='</div></div>';
+  document.getElementById('ta1Status').innerHTML=h;
+  document.getElementById('ta1Status').style.display='block';
+}
 function switchTab(tab){
   document.querySelectorAll('.drug-tab').forEach(t=>{t.classList.remove('active');t.style.background='#fff';t.style.color='#666';t.style.borderColor='#ddd';});
   const tEl=document.getElementById('tab-'+tab);
@@ -852,16 +1263,28 @@ function switchTab(tab){
   document.getElementById('transformContent').style.display='none';
   document.getElementById('drugContent').style.display='none';
   document.getElementById('healthContent').style.display='none';
+  document.getElementById('trainingContent').style.display='none';
+  document.getElementById('ta1Status').style.display='none';
   if(tab==='overview'){tEl.classList.add('active');tEl.style.background='#1a1a1a';tEl.style.color='#fff';tEl.style.borderColor='#1a1a1a';document.getElementById('overviewContent').style.display='block';buildOverview();}
   else if(tab==='transform'){tEl.classList.add('active');tEl.style.background='#0ea5e9';tEl.style.color='#fff';tEl.style.borderColor='#0ea5e9';document.getElementById('transformContent').style.display='block';buildTransform();}
   else if(tab==='health'){tEl.classList.add('active');tEl.style.background='#ef4444';tEl.style.color='#fff';tEl.style.borderColor='#ef4444';document.getElementById('healthContent').style.display='block';buildHealth();}
-  else{const d=DRUGS[tab];tEl.classList.add('active');tEl.style.background=d.color;tEl.style.color='#fff';tEl.style.borderColor=d.color;document.getElementById('drugContent').style.display='block';currentDrug=d;selectedId=null;const nowW=getDrugNowW(d);document.getElementById('nowRow').innerHTML='<span class="now-badge" style="background:'+d.sel+';color:'+d.color+';font-weight:700">📍 TODAY: '+NOW_DS+' (Month '+Math.round(nowW/4.33)+', Week '+nowW+')</span><span class="now-badge" style="background:#f0f0ee;color:#666;font-size:8px">'+d.name+' · '+d.sub+' · '+d.role+'</span>';buildAxis(d);buildRows(d);setTimeout(()=>selectB(d,d.benefits[0].id),50);}
+  else if(tab==='training'){tEl.classList.add('active');tEl.style.background='#16a34a';tEl.style.color='#fff';tEl.style.borderColor='#16a34a';document.getElementById('trainingContent').style.display='block';buildTraining();}
+  else{const d=DRUGS[tab];tEl.classList.add('active');tEl.style.background=d.color;tEl.style.color='#fff';tEl.style.borderColor=d.color;document.getElementById('drugContent').style.display='block';currentDrug=d;selectedId=null;const nowW=getDrugNowW(d);document.getElementById('nowRow').innerHTML='<span class="now-badge" style="background:'+d.sel+';color:'+d.color+';font-weight:700">📍 TODAY: '+NOW_DS+' (Month '+Math.round(nowW/4.33)+', Week '+nowW+')</span><span class="now-badge" style="background:#f0f0ee;color:#666;font-size:8px">'+d.name+' · '+d.sub+' · '+d.role+'</span>';if(tab==='ta1'){buildTa1Status();}buildAxis(d);buildRows(d);setTimeout(()=>selectB(d,d.benefits[0].id),50);}
 }
 function toggleLayer(l){if(l==='stack'){showStack=!showStack;document.getElementById('btn-stack').classList.toggle('on',showStack);}else{showSolo=!showSolo;document.getElementById('btn-solo').classList.toggle('on',showSolo);}if(currentDrug)buildRows(currentDrug);}
 function sortBy(m){sortMode=m;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));document.getElementById('sort-'+m).classList.add('active');if(currentDrug)buildRows(currentDrug);}
 
 document.getElementById('bottomNote').innerHTML='Bello Protocol Master Dashboard. '+NOW_DS+'. Mounjaro (13) + Jardiance (15) + Repatha (11) + Tα1 (9) = 48 mechanisms. 7 Rx + 2 Peptides + 17 Supplements. Bio age ~41 vs Chrono 52. 210.3 lb · VO2 32.9 · HRV 87ms.';
 switchTab('overview');
+// Auto-fetch live Oura data on page load
+if (OURA_WORKER_URL) {
+  var oSt = document.getElementById('ouraStatus');
+  if (oSt) { oSt.textContent = '🔄 Connecting to Oura...'; oSt.style.color = '#d97706'; }
+  fetchOuraData();
+} else {
+  var oSt2 = document.getElementById('ouraStatus');
+  if (oSt2) { oSt2.textContent = '📦 Static data — ' + HEALTH_DATA.synced; oSt2.style.color = '#9ca3af'; }
+}
 </script>
 </body>
 </html>
